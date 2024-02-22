@@ -48,28 +48,28 @@ func Walk[T any](it Iterator[T], f func(T) error) error {
 
 // Slice returns an iterator over the elements of a slice.
 func Slice[T any](slice []T) Iterator[T] {
-	return &sliceIterator[T]{slice: slice}
+	return &sliceIter[T]{slice: slice}
 }
 
-type sliceIterator[T any] struct {
+type sliceIter[T any] struct {
 	slice  []T
 	cursor int
 }
 
-func (it *sliceIterator[T]) Next() bool {
+func (it *sliceIter[T]) Next() bool {
 	it.cursor++
 	return it.cursor <= len(it.slice)
 }
 
-func (it *sliceIterator[T]) Item() T {
+func (it *sliceIter[T]) Item() T {
 	return it.slice[it.cursor-1]
 }
 
-func (it *sliceIterator[T]) Error() error {
+func (it *sliceIter[T]) Error() error {
 	return nil
 }
 
-func (it *sliceIterator[T]) Close() error {
+func (it *sliceIter[T]) Close() error {
 	return nil
 }
 
@@ -89,17 +89,17 @@ func ToSlice[T any](it Iterator[T]) ([]T, error) {
 // Map returns an iterator that applies a function to each item in
 // the input iterator.
 func Map[T, U any](it Iterator[T], f func(T) (U, error)) Iterator[U] {
-	return &mapIterator[T, U]{it: it, f: f}
+	return &mapIter[T, U]{it: it, f: f}
 }
 
-type mapIterator[T, U any] struct {
+type mapIter[T, U any] struct {
 	it   Iterator[T]
 	f    func(T) (U, error)
 	item U
 	err  error
 }
 
-func (m *mapIterator[T, U]) Next() bool {
+func (m *mapIter[T, U]) Next() bool {
 	if m.err != nil {
 		return false
 	}
@@ -117,17 +117,135 @@ func (m *mapIterator[T, U]) Next() bool {
 	return false
 }
 
-func (m *mapIterator[T, U]) Item() U {
+func (m *mapIter[T, U]) Item() U {
 	return m.item
 }
 
-func (m *mapIterator[T, U]) Error() error {
+func (m *mapIter[T, U]) Error() error {
 	if m.err != nil {
 		return m.err
 	}
 	return m.it.Error()
 }
 
-func (m *mapIterator[T, U]) Close() error {
+func (m *mapIter[T, U]) Close() error {
 	return m.it.Close()
+}
+
+// FilterMap returns an iterator that applies a function to each item in
+// the input iterator and yields the result if the function returns true.
+func FilterMap[T, U any](it Iterator[T], f func(T) (U, bool, error)) Iterator[U] {
+	return &filterMap[T, U]{it: it, f: f}
+}
+
+type filterMap[T, U any] struct {
+	it   Iterator[T]
+	f    func(T) (U, bool, error)
+	item U
+	err  error
+}
+
+func (f *filterMap[T, U]) Next() bool {
+	if f.err != nil {
+		return false
+	}
+	for f.it.Next() {
+		item, ok, err := f.f(f.it.Item())
+		if err != nil {
+			f.err = err
+			return false
+		}
+		if ok {
+			f.item = item
+			return true
+		}
+	}
+	return false
+}
+
+func (f *filterMap[T, U]) Item() U {
+	return f.item
+}
+
+func (f *filterMap[T, U]) Error() error {
+	if f.err != nil {
+		return f.err
+	}
+	return f.it.Error()
+}
+
+func (f *filterMap[T, U]) Close() error {
+	return f.it.Close()
+}
+
+// SkipWhile returns an iterator that skips items from the input
+// iterator while a predicate function returns true.
+func SkipWhile[T any](it Iterator[T], f func(T) bool) Iterator[T] {
+	return &skipWhile[T]{it: it, f: f}
+}
+
+type skipWhile[T any] struct {
+	it      Iterator[T]
+	f       func(T) bool
+	skipped bool
+}
+
+func (s *skipWhile[T]) Next() bool {
+	if s.skipped {
+		return s.it.Next()
+	}
+	for s.it.Next() {
+		if !s.f(s.it.Item()) {
+			s.skipped = true
+			return true
+		}
+	}
+	return false
+}
+
+func (s *skipWhile[T]) Item() T {
+	return s.it.Item()
+}
+
+func (s *skipWhile[T]) Error() error {
+	return s.it.Error()
+}
+
+func (s *skipWhile[T]) Close() error {
+	return s.it.Close()
+}
+
+// TakeWhile returns an iterator that yields items from the input
+// iterator while a predicate function returns true.
+func TakeWhile[T any](it Iterator[T], f func(T) bool) Iterator[T] {
+	return &takeWhile[T]{it: it, f: f}
+}
+
+type takeWhile[T any] struct {
+	it  Iterator[T]
+	f   func(T) bool
+	eof bool
+}
+
+func (t *takeWhile[T]) Next() bool {
+	if t.eof {
+		return false
+	}
+	if t.it.Next() && t.f(t.it.Item()) {
+		return true
+	}
+	t.eof = true
+	return false
+}
+
+func (t *takeWhile[T]) Item() T {
+	return t.it.Item()
+}
+
+func (t *takeWhile[T]) Error() error {
+	return t.it.Error()
+}
+
+func (t *takeWhile[T]) Close() error {
+	return t.it.Close()
 }

@@ -6,23 +6,28 @@ import (
 
 	"github.com/google/btree"
 	"github.com/sleepymole/go-toydb/util/itertools"
+	"github.com/sleepymole/go-toydb/util/rangeutil"
 )
 
-type MemoryEngine struct {
+type Memory struct {
+	engineBase
+
 	data *btree.BTreeG[KeyValue]
 }
 
-var _ Engine = (*MemoryEngine)(nil)
+var _ Engine = &Memory{}
 
-func NewMemoryEngine() *MemoryEngine {
-	return &MemoryEngine{
+func NewMemoryEngine() *Memory {
+	m := &Memory{
 		data: btree.NewG(2, func(a, b KeyValue) bool {
 			return bytes.Compare(a.Key, b.Key) < 0
 		}),
 	}
+	m.init(m)
+	return m
 }
 
-func (m *MemoryEngine) Get(key []byte) ([]byte, error) {
+func (m *Memory) Get(key []byte) ([]byte, error) {
 	kv, ok := m.data.Get(MakeKeyValue(key, nil))
 	if !ok {
 		return nil, ErrNotFound
@@ -31,32 +36,62 @@ func (m *MemoryEngine) Get(key []byte) ([]byte, error) {
 	return value, nil
 }
 
-func (m *MemoryEngine) Set(key, value []byte) error {
+func (m *Memory) Set(key, value []byte) error {
 	kv := MakeKeyValue(slices.Clone(key), slices.Clone(value))
 	m.data.ReplaceOrInsert(kv)
 	return nil
 }
 
-func (m *MemoryEngine) Delete(key []byte) error {
+func (m *Memory) Delete(key []byte) error {
 	m.data.Delete(MakeKeyValue(key, nil))
 	return nil
 }
 
-func (m *MemoryEngine) Flush() error {
+func (m *Memory) Flush() error {
 	return nil
 }
 
-func (m *MemoryEngine) Scan(start, end []byte) (itertools.Iterator[KeyValue], error) {
-	scan := newMemoryEngineScan(m.data, slices.Clone(start), slices.Clone(end), false)
+func (m *Memory) Scan(start, end rangeutil.Bound) (itertools.Iterator[KeyValue], error) {
+	start = start.Clone()
+	var scan itertools.Iterator[KeyValue] = newMemoryScan(m.data, start.Value(), start.Unbounded(), true /* ascending */)
+	if start.Excluded() {
+		scan = itertools.SkipWhile(scan, func(kv KeyValue) bool {
+			return !bytes.Equal(kv.Key, start.Value())
+		})
+	}
+	if end.Included() {
+		scan = itertools.TakeWhile(scan, func(kv KeyValue) bool {
+			return bytes.Compare(kv.Key, end.Value()) <= 0
+		})
+	} else if end.Excluded() {
+		scan = itertools.TakeWhile(scan, func(kv KeyValue) bool {
+			return bytes.Compare(kv.Key, end.Value()) < 0
+		})
+	}
 	return scan, nil
 }
 
-func (m *MemoryEngine) ReverseScan(start, end []byte) (itertools.Iterator[KeyValue], error) {
-	scan := newMemoryEngineScan(m.data, slices.Clone(start), slices.Clone(end), true)
+func (m *Memory) ReverseScan(start, end rangeutil.Bound) (itertools.Iterator[KeyValue], error) {
+	start = start.Clone()
+	var scan itertools.Iterator[KeyValue] = newMemoryScan(m.data, start.Value(), start.Unbounded(), false /* ascending */)
+	if start.Excluded() {
+		scan = itertools.SkipWhile(scan, func(kv KeyValue) bool {
+			return !bytes.Equal(kv.Key, start.Value())
+		})
+	}
+	if end.Included() {
+		scan = itertools.TakeWhile(scan, func(kv KeyValue) bool {
+			return bytes.Compare(kv.Key, end.Value()) >= 0
+		})
+	} else if end.Excluded() {
+		scan = itertools.TakeWhile(scan, func(kv KeyValue) bool {
+			return bytes.Compare(kv.Key, end.Value()) > 0
+		})
+	}
 	return scan, nil
 }
 
-func (m *MemoryEngine) Status() (*EngineStatus, error) {
+func (m *Memory) Status() (*EngineStatus, error) {
 	size := int64(0)
 	m.data.Ascend(func(kv KeyValue) bool {
 		size += int64(len(kv.Key)) + int64(len(kv.Value))
@@ -72,34 +107,40 @@ func (m *MemoryEngine) Status() (*EngineStatus, error) {
 	}, nil
 }
 
-type memoryEngineScan struct {
-	data       *btree.BTreeG[KeyValue]
-	start, end []byte
-	reverse    bool
-	kv         KeyValue
-	kvCh       chan KeyValue
-	stop       chan struct{}
-	done       chan struct{}
+func (m *Memory) Close() error {
+	return nil
 }
 
-var _ itertools.Iterator[KeyValue] = &memoryEngineScan{}
+type memoryScan struct {
+	data      *btree.BTreeG[KeyValue]
+	start     []byte
+	unbounded bool
+	ascending bool
+	kv        KeyValue
+	kvCh      chan KeyValue
+	stop      chan struct{}
+	done      chan struct{}
+}
 
-func newMemoryEngineScan(
+var _ itertools.Iterator[KeyValue] = &memoryScan{}
+
+func newMemoryScan(
 	data *btree.BTreeG[KeyValue],
-	start, end []byte,
-	reverse bool,
-) *memoryEngineScan {
-	return &memoryEngineScan{
-		data:    data,
-		start:   start,
-		end:     end,
-		reverse: reverse,
-		stop:    make(chan struct{}, 1),
-		done:    make(chan struct{}),
+	start []byte,
+	unbounded bool,
+	ascending bool,
+) *memoryScan {
+	return &memoryScan{
+		data:      data,
+		start:     start,
+		unbounded: unbounded,
+		ascending: ascending,
+		stop:      make(chan struct{}, 1),
+		done:      make(chan struct{}),
 	}
 }
 
-func (m *memoryEngineScan) Next() bool {
+func (m *memoryScan) Next() bool {
 	if m.kvCh == nil {
 		m.kvCh = make(chan KeyValue, 1)
 		go m.run()
@@ -114,7 +155,7 @@ func (m *memoryEngineScan) Next() bool {
 	return true
 }
 
-func (m *memoryEngineScan) run() {
+func (m *memoryScan) run() {
 	defer close(m.done)
 	defer close(m.kvCh)
 
@@ -127,32 +168,32 @@ func (m *memoryEngineScan) run() {
 		}
 	}
 
-	from := MakeKeyValue(m.start, nil)
-	if len(m.end) > 0 {
-		to := MakeKeyValue(m.end, nil)
-		if m.reverse {
-			m.data.DescendRange(from, to, iterFunc)
+	if m.unbounded {
+		if m.ascending {
+			m.data.Ascend(iterFunc)
 		} else {
-			m.data.AscendRange(from, to, iterFunc)
+			m.data.Descend(iterFunc)
 		}
 	} else {
-		if m.reverse {
-			m.data.DescendLessOrEqual(from, iterFunc)
+		start := MakeKeyValue(m.start, nil)
+		if m.ascending {
+			m.data.AscendGreaterOrEqual(start, iterFunc)
 		} else {
-			m.data.AscendGreaterOrEqual(from, iterFunc)
+			m.data.DescendLessOrEqual(start, iterFunc)
 		}
+
 	}
 }
 
-func (m *memoryEngineScan) Item() KeyValue {
+func (m *memoryScan) Item() KeyValue {
 	return m.kv
 }
 
-func (m *memoryEngineScan) Error() error {
+func (m *memoryScan) Error() error {
 	return nil
 }
 
-func (m *memoryEngineScan) Close() error {
+func (m *memoryScan) Close() error {
 	select {
 	case m.stop <- struct{}{}:
 	default:

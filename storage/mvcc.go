@@ -9,6 +9,7 @@ import (
 
 	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/util/itertools"
+	"github.com/sleepymole/go-toydb/util/rangeutil"
 	"github.com/sleepymole/go-toydb/util/set"
 )
 
@@ -193,7 +194,7 @@ func (m *MVCC) setNextVersionLocked(version MVCCVersion) error {
 }
 
 func (m *MVCC) scanActiveLocked() (set.Set[MVCCVersion], error) {
-	iter, err := ScanPrefix(m.mu.engine, mvccTxnActiveKeyPrefix)
+	iter, err := m.mu.engine.ScanPrefix(mvccTxnActiveKeyPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +253,7 @@ func (m *MVCC) getTxnActiveSnapshotLocked(version MVCCVersion) (set.Set[MVCCVers
 // uncommitted version), an serializable error is returned. Replacing our own
 // uncommitted version is fine.
 func (m *MVCC) writeVersion(key []byte, value mo.Option[[]byte], state *MVCCTxnState) error {
-	minVersion := state.Version
+	minVersion := state.Version + 1
 	for v := range state.Active {
 		minVersion = min(minVersion, v)
 	}
@@ -263,22 +264,24 @@ func (m *MVCC) writeVersion(key []byte, value mo.Option[[]byte], state *MVCCTxnS
 	// invisible to us (either a newer version, or an uncommitted version
 	// in the past). We can only conflict with the latest key, since all
 	// MVCCTxn enforce the same invariant.
-	from := encodeMVCCVersionedKey(key, math.MaxUint64)
-	to := encodeMVCCVersionedKey(key, minVersion-1)
-	iter, err := m.mu.engine.ReverseScan(from, to)
+	start := encodeMVCCVersionedKey(key, minVersion)
+	end := encodeMVCCVersionedKey(key, math.MaxUint64)
+	iter, err := m.mu.engine.ReverseScan(rangeutil.RangeInclusive(start, end))
 	if err != nil {
 		return err
 	}
-	var maxVersion MVCCVersion
 	walkFunc := func(kv KeyValue) error {
-		_, maxVersion, err = decodeMVCCVersionedKey(kv.Key)
-		return err
+		_, version, err := decodeMVCCVersionedKey(kv.Key)
+		if err != nil {
+			return err
+		}
+		if !state.IsVisible(version) {
+			return ErrSerializable
+		}
+		return nil
 	}
 	if err := itertools.Walk(iter, walkFunc); err != nil {
 		return err
-	}
-	if maxVersion > 0 && !state.IsVisible(maxVersion) {
-		return ErrSerializable
 	}
 
 	// Write the new version and its write record.
@@ -298,9 +301,9 @@ func (m *MVCC) get(key []byte, state *MVCCTxnState) ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	from := encodeMVCCVersionedKey(key, state.Version)
-	to := encodeMVCCVersionedKey(key, 0)
-	iter, err := m.mu.engine.ReverseScan(from, to)
+	start := encodeMVCCVersionedKey(key, 0)
+	end := encodeMVCCVersionedKey(key, state.Version)
+	iter, err := m.mu.engine.ReverseScan(rangeutil.Range(start, end))
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +337,7 @@ func (m *MVCC) commit(state *MVCCTxnState) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	iter, err := ScanPrefix(m.mu.engine, encodeMVCCTxnWriteKeyPrefix(state.Version))
+	iter, err := m.mu.engine.ScanPrefix(encodeMVCCTxnWriteKeyPrefix(state.Version))
 	if err != nil {
 		return err
 	}
@@ -357,7 +360,7 @@ func (m *MVCC) rollback(state *MVCCTxnState) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	iter, err := ScanPrefix(m.mu.engine, encodeMVCCTxnWriteKeyPrefix(state.Version))
+	iter, err := m.mu.engine.ScanPrefix(encodeMVCCTxnWriteKeyPrefix(state.Version))
 	if err != nil {
 		return err
 	}
@@ -454,95 +457,135 @@ func (t *MVCCTxn) Get(key []byte) ([]byte, error) {
 	return t.mvcc.get(key, t.state)
 }
 
-func (t *MVCCTxn) Scan(start, end []byte) (itertools.Iterator[KeyValue], error) {
+func (t *MVCCTxn) Scan(start, end rangeutil.Bound) (itertools.Iterator[KeyValue], error) {
 	return newMVCCScan(t.mvcc, start, end, false /* reverse */, t.state)
 }
 
-func (t *MVCCTxn) ReverseScan(start, end []byte) (itertools.Iterator[KeyValue], error) {
+func (t *MVCCTxn) ReverseScan(start, end rangeutil.Bound) (itertools.Iterator[KeyValue], error) {
 	return newMVCCScan(t.mvcc, start, end, true /* reverse */, t.state)
 }
 
-type mvccScan struct {
-	mvcc       *MVCC
-	start, end []byte
-	reverse    bool
-	state      *MVCCTxnState
-	kv         KeyValue
-	err        error
+type mvccKeyValue struct {
+	key     []byte
+	value   mo.Option[[]byte]
+	version MVCCVersion
+}
 
-	inner     itertools.Iterator[KeyValue]
-	innerNext bool
-	innerKV   KeyValue
+func decodeMVCCKeyValue(encoded KeyValue) (mvccKeyValue, error) {
+	key, version, err := decodeMVCCVersionedKey(encoded.Key)
+	if err != nil {
+		return mvccKeyValue{}, err
+	}
+	value, err := decodeMVCCVersionedValue(encoded.Value)
+	if err != nil {
+		return mvccKeyValue{}, err
+	}
+	return mvccKeyValue{
+		key:     key,
+		value:   value,
+		version: version,
+	}, nil
+}
+
+type mvccScan struct {
+	mvcc    *MVCC
+	reverse bool
+	state   *MVCCTxnState
+	kv      KeyValue
+
+	inner      itertools.Iterator[mvccKeyValue]
+	innerValid bool
 }
 
 func newMVCCScan(
 	mvcc *MVCC,
-	start, end []byte,
+	start, end rangeutil.Bound,
 	reverse bool,
 	state *MVCCTxnState,
 ) (*mvccScan, error) {
-	from := encodeMVCCVersionedKey(start, 0)
-	to := prefixNext(mvccVersionedKeyPrefix)
-	if len(end) > 0 {
-		to = encodeMVCCVersionedKey(end, state.Version)
+	startVersion, endVersion := MVCCVersion(0), MVCCVersion(math.MaxUint64)
+	if reverse {
+		startVersion, endVersion = math.MaxUint64, 0
+	}
+
+	if start.Included() || start.Excluded() {
+		encoded := encodeMVCCVersionedKey(start.Value(), startVersion)
+		start = rangeutil.Included(encoded)
+	} else {
+		encoded := encodeMVCCVersionedKey(start.Value(), startVersion)
+		start = rangeutil.Excluded(encoded)
+	}
+
+	if end.Included() {
+		encoded := encodeMVCCVersionedKey(end.Value(), endVersion)
+		end = rangeutil.Excluded(encoded)
+	} else if end.Excluded() {
+		encoded := encodeMVCCVersionedKey(end.Value(), endVersion)
+		end = rangeutil.Excluded(encoded)
+	} else {
+		next := prefixNext(mvccVersionedKeyPrefix)
+		end = rangeutil.Excluded(next)
 	}
 
 	mvcc.mu.RLock()
 
-	var inner itertools.Iterator[KeyValue]
+	var rawIter itertools.Iterator[KeyValue]
 	var err error
 	if reverse {
-		inner, err = mvcc.mu.engine.ReverseScan(from, to)
+		rawIter, err = mvcc.mu.engine.ReverseScan(start, end)
 	} else {
-		inner, err = mvcc.mu.engine.Scan(from, to)
+		rawIter, err = mvcc.mu.engine.Scan(start, end)
 	}
 	if err != nil {
 		mvcc.mu.RUnlock()
 		return nil, err
 	}
-	innerNext := inner.Next()
+
+	inner := itertools.FilterMap(
+		rawIter,
+		func(encoded KeyValue) (mvccKeyValue, bool, error) {
+			kv, err := decodeMVCCKeyValue(encoded)
+			if err != nil {
+				return mvccKeyValue{}, false, err
+			}
+			if state.IsVisible(kv.version) {
+				return kv, true, nil
+			}
+			return mvccKeyValue{}, false, nil
+		},
+	)
+	// Advance to the first visible key. It creates an invarint that the
+	// inner iterator is always at a next visible key when called from Next.
+	innerValid := inner.Next()
 
 	return &mvccScan{
-		mvcc:      mvcc,
-		start:     start,
-		end:       end,
-		reverse:   reverse,
-		state:     state,
-		inner:     inner,
-		innerNext: innerNext,
+		mvcc:       mvcc,
+		reverse:    reverse,
+		state:      state,
+		inner:      inner,
+		innerValid: innerValid,
 	}, nil
 }
 
 func (s *mvccScan) Next() bool {
-	if s.err != nil {
-		return false
-	}
-	var kv mo.Option[KeyValue]
-	for s.innerNext {
-		key, version, err := decodeMVCCVersionedKey(s.innerKV.Key)
-		if err != nil {
-			s.err = err
-			return false
+	for s.innerValid {
+		kv := s.inner.Item()
+		// Scan over all the versions of the same key.
+		s.innerValid = s.inner.Next()
+		for s.innerValid && bytes.Equal(s.inner.Item().key, kv.key) {
+			// Keep the latest version of the key.
+			if !s.reverse {
+				kv = s.inner.Item()
+			}
+			s.innerValid = s.inner.Next()
 		}
-		if s.state.IsVisible(version) {
-			value, err := decodeMVCCVersionedValue(s.inner.Item().Value)
-			if err != nil {
-				s.err = err
-				return false
+		if kv.value.IsPresent() {
+			s.kv = KeyValue{
+				Key:   kv.key,
+				Value: kv.value.MustGet(),
 			}
-
-			if kv.IsPresent() && !bytes.Equal(kv.MustGet().Key, key) {
-				s.kv = kv.MustGet()
-				return true
-			}
-			if value.IsPresent() {
-				kv = mo.Some(MakeKeyValue(key, value.MustGet()))
-			} else {
-				kv = mo.None[KeyValue]()
-			}
+			return true
 		}
-		s.innerNext = s.inner.Next()
-		s.innerKV = s.inner.Item()
 	}
 	return false
 }
@@ -552,9 +595,6 @@ func (s *mvccScan) Item() KeyValue {
 }
 
 func (s *mvccScan) Error() error {
-	if s.err != nil {
-		return s.err
-	}
 	return s.inner.Error()
 }
 
