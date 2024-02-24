@@ -4,7 +4,6 @@ import "math/rand/v2"
 
 type (
 	NodeID uint8
-	Term   uint64
 	Ticks  uint8
 )
 
