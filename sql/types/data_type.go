@@ -7,22 +7,24 @@ import (
 type DataType uint8
 
 const (
-	DataTypeNull DataType = iota
-	DataTypeBoolean
-	DataTypeInteger
-	DataTypeFloat
-	DataTypeString
+	Null DataType = iota
+	Boolean
+	Integer
+	Float
+	String
 )
 
 func (d DataType) String() string {
 	switch d {
-	case DataTypeBoolean:
+	case Null:
+		return "NULL"
+	case Boolean:
 		return "BOOLEAN"
-	case DataTypeInteger:
+	case Integer:
 		return "INTEGER"
-	case DataTypeFloat:
+	case Float:
 		return "FLOAT"
-	case DataTypeString:
+	case String:
 		return "STRING"
 	default:
 		return fmt.Sprintf("UNKNOWN(%d)", d)

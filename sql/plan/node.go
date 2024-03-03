@@ -59,24 +59,24 @@ type UpdateNode struct {
 type AggregationType uint8
 
 const (
-	AggregationTypeAverage AggregationType = iota
-	AggregationTypeCount
-	AggregationTypeMax
-	AggregationTypeMin
-	AggregationTypeSum
+	AggregationAverage AggregationType = iota
+	AggregationCount
+	AggregationMax
+	AggregationMin
+	AggregationSum
 )
 
 func (a AggregationType) String() string {
 	switch a {
-	case AggregationTypeAverage:
+	case AggregationAverage:
 		return "average"
-	case AggregationTypeCount:
+	case AggregationCount:
 		return "count"
-	case AggregationTypeMax:
+	case AggregationMax:
 		return "maximum"
-	case AggregationTypeMin:
+	case AggregationMin:
 		return "minimum"
-	case AggregationTypeSum:
+	case AggregationSum:
 		return "sum"
 	default:
 		return fmt.Sprintf("unknown(%d)", a)

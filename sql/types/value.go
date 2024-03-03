@@ -19,23 +19,23 @@ func (v *Value) DataType() DataType {
 }
 
 func (v *Value) IsNull() bool {
-	return v.typ == DataTypeNull
+	return v.typ == Null
 }
 
 func (v *Value) IsBoolean() bool {
-	return v.typ == DataTypeBoolean
+	return v.typ == Boolean
 }
 
 func (v *Value) IsInteger() bool {
-	return v.typ == DataTypeInteger
+	return v.typ == Integer
 }
 
 func (v *Value) IsFloat() bool {
-	return v.typ == DataTypeFloat
+	return v.typ == Float
 }
 
 func (v *Value) IsString() bool {
-	return v.typ == DataTypeString
+	return v.typ == String
 }
 
 func (v *Value) Boolean() bool {
@@ -52,19 +52,19 @@ func (v *Value) Float() float64 {
 
 func (v *Value) String() string {
 	switch v.typ {
-	case DataTypeNull:
+	case Null:
 		return "NULL"
-	case DataTypeBoolean:
+	case Boolean:
 		if v.Boolean() {
 			return "TRUE"
 		} else {
 			return "FALSE"
 		}
-	case DataTypeInteger:
+	case Integer:
 		return strconv.FormatInt(v.x, 10)
-	case DataTypeFloat:
+	case Float:
 		return strconv.FormatFloat(v.Float(), 'g', -1, 64)
-	case DataTypeString:
+	case String:
 		return v.s
 	default:
 		return v.typ.String()
@@ -79,9 +79,9 @@ func (v *Value) Compare(other *Value) (int, bool) {
 		return 1, true
 	}
 	switch v.typ {
-	case DataTypeNull:
+	case Null:
 		return -1, true
-	case DataTypeBoolean:
+	case Boolean:
 		if !other.IsBoolean() {
 			return 0, false
 		}
@@ -92,7 +92,7 @@ func (v *Value) Compare(other *Value) (int, bool) {
 		} else {
 			return -1, true
 		}
-	case DataTypeInteger:
+	case Integer:
 		if other.IsInteger() {
 			return cmp.Compare(v.x, other.x), true
 		}
@@ -100,7 +100,7 @@ func (v *Value) Compare(other *Value) (int, bool) {
 			return cmp.Compare(float64(v.x), other.Float()), true
 		}
 		return 0, false
-	case DataTypeFloat:
+	case Float:
 		if other.IsInteger() {
 			return cmp.Compare(v.Float(), float64(other.x)), true
 		}
@@ -108,7 +108,7 @@ func (v *Value) Compare(other *Value) (int, bool) {
 			return cmp.Compare(v.Float(), other.Float()), true
 		}
 		return 0, false
-	case DataTypeString:
+	case String:
 		if !other.IsString() {
 			return 0, false
 		}
@@ -134,9 +134,9 @@ func (v *Value) Hash() uint64 {
 }
 
 var (
-	NullValue  = &Value{typ: DataTypeNull}
-	TrueValue  = &Value{typ: DataTypeBoolean, x: 1}
-	FalseValue = &Value{typ: DataTypeBoolean}
+	NullValue  = &Value{typ: Null}
+	TrueValue  = &Value{typ: Boolean, x: 1}
+	FalseValue = &Value{typ: Boolean}
 )
 
 func MakeBooleanValue(b bool) *Value {
@@ -147,13 +147,13 @@ func MakeBooleanValue(b bool) *Value {
 }
 
 func MakeFloatValue(f float64) *Value {
-	return &Value{typ: DataTypeFloat, x: int64(math.Float64bits(f))}
+	return &Value{typ: Float, x: int64(math.Float64bits(f))}
 }
 
 func MakeIntegerValue(i int64) *Value {
-	return &Value{typ: DataTypeInteger, x: i}
+	return &Value{typ: Integer, x: i}
 }
 
 func MakeStringValue(s string) *Value {
-	return &Value{typ: DataTypeString, s: s}
+	return &Value{typ: String, s: s}
 }

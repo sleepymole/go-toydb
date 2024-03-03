@@ -36,7 +36,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 					return nil, err
 				}
 				s.txn = txn
-				result := execution.MakeResultSetBegin(txn.Version(), true)
+				result := execution.MakeBeginResultSet(txn.Version(), true)
 				return result, nil
 			}
 			txn, err := s.engine.BeginReadOnly()
@@ -44,7 +44,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 				return nil, err
 			}
 			s.txn = txn
-			result := execution.MakeResultSetBegin(txn.Version(), true)
+			result := execution.MakeBeginResultSet(txn.Version(), true)
 			return result, nil
 		}
 		if x.AsOf > 0 {
@@ -55,7 +55,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 			return nil, err
 		}
 		s.txn = txn
-		result := execution.MakeResultSetBegin(txn.Version(), false)
+		result := execution.MakeBeginResultSet(txn.Version(), false)
 		return result, nil
 	case *ast.CommitStmt:
 		if s.txn == nil {
@@ -66,7 +66,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 			return nil, err
 		}
 		s.txn = nil
-		result := execution.MakeResultSetCommit(version)
+		result := execution.MakeCommitResultSet(version)
 		return result, nil
 	case *ast.RollbackStmt:
 		if s.txn == nil {
@@ -77,7 +77,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 			return nil, err
 		}
 		s.txn = nil
-		result := execution.MakeResultSetRollback(version)
+		result := execution.MakeRollbackResultSet(version)
 		return result, nil
 	case *ast.ExplainStmt:
 		var result *execution.ResultSet
@@ -87,7 +87,7 @@ func (s *Session) Execute(query string) (*execution.ResultSet, error) {
 			if err != nil {
 				return err
 			}
-			result = execution.MakeResultSetExplain(node)
+			result = execution.MakeExplainResultSet(node)
 			return nil
 		}, true); err != nil {
 			return nil, err

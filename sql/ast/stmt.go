@@ -92,10 +92,10 @@ type JoinTableExpr struct {
 type JoinType uint8
 
 const (
-	JoinTypeCross JoinType = iota
-	JoinTypeInner
-	JoinTypeLeft
-	JoinTypeRight
+	CrossJoin JoinType = iota
+	InnerJoin
+	LeftJoin
+	RightJoin
 )
 
 type OrderBy struct {
