@@ -4,8 +4,6 @@ import (
 	"net"
 )
 
-type RequestID uint64
-
 type Server struct {
 	node  *Node
 	peers map[NodeID]string

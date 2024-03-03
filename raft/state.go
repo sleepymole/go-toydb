@@ -1,17 +1,44 @@
 package raft
 
 import (
+	"errors"
+
 	"github.com/sleepymole/go-toydb/util/set"
 )
 
-// State represents a raft-machine state machine.
+// InternalError is an error that is used to wrap internal errors.
+// It is used to distinguish internal errors from user errors.
+type InternalError struct {
+	err error
+}
+
+func (e *InternalError) Error() string {
+	return e.err.Error()
+}
+
+func (e *InternalError) Unwrap() error {
+	return e.err
+}
+
+func MakeInternalError(err error) error {
+	return &InternalError{err: err}
+}
+
+func IsInternalError(err error) bool {
+	var e *InternalError
+	return errors.As(err, &e)
+}
+
+// State represents a raft state machine. The caller of
+// raft is responsible for implementing the state machine.
 type State interface {
-	// AppliedIndex returns the last index from the state machine.
+	// AppliedIndex returns the last applied index.
 	AppliedIndex() Index
-	// Apply applies a log to the state machine. The log entry is
-	// always applied no matter what the result is (success or failure).
-	// The returned value is the result and the error during the application
-	// of the log entry.
+	// Apply applies a log to the state machine. Apply should
+	// be deterministic and idempotent.
+	//
+	// If InternalError is returned, the raft node will be terminated.
+	// Any other error is considered applied and returned to the caller.
 	Apply(entry *Entry) ([]byte, error)
 	// Query queries the state machine with the given command.
 	Query(command []byte) ([]byte, error)
@@ -42,39 +69,39 @@ type ApplyInstruction struct {
 }
 
 type NotifyInstruction struct {
-	ID      []byte
-	Address Address
-	Index   Index
+	ID     RequestID
+	NodeID NodeID
+	Index  Index
 }
 
 type QueryInstruction struct {
-	ID      []byte
-	Address Address
-	Command []byte
+	ID      RequestID
+	NodeID  NodeID
+	Command RequestID
 	Term    Term
 	Index   Index
 	Quorum  uint8
 }
 
 type StatusInstruction struct {
-	ID      []byte
-	Address Address
-	Status  *Status
+	ID     RequestID
+	NodeID NodeID
+	Status *Status
 }
 
 type VoteInstruction struct {
-	Term    Term
-	Index   Index
-	Address Address
+	Term   Term
+	Index  Index
+	NodeID NodeID
 }
 
 type Query struct {
-	ID      []byte
+	ID      RequestID
 	Term    Term
-	Address Address
+	NodeID  NodeID
 	Command []byte
 	Quorum  uint8
-	Votes   set.HashSet[Address]
+	Votes   set.Set[NodeID]
 }
 
 // Driver is a driver for driving the raft state machine.
@@ -85,8 +112,8 @@ type Driver struct {
 	stateCh <-chan Instruction
 	nodeCh  chan<- *Message
 	notify  map[Index]struct {
-		address Address
-		id      []byte
+		id     []byte
+		nodeID NodeID
 	}
 	// queries any
 }
@@ -97,8 +124,8 @@ func NewDriver(nodeID NodeID, stateCh <-chan Instruction, nodeCh chan<- *Message
 		stateCh: stateCh,
 		nodeCh:  nodeCh,
 		notify: make(map[Index]struct {
-			address Address
-			id      []byte
+			id     []byte
+			nodeID NodeID
 		}),
 	}
 }

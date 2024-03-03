@@ -1,39 +1,20 @@
 package raft
 
 import (
-	"encoding/binary"
+	"bytes"
 	"hash/fnv"
 )
 
-// Address is the address of a message.
-// Only one of Broadcast, NodeID, and Client is set.
-type Address struct {
-	// Broadcast is true if the message is being sent to all peers.
-	Broadcast bool
-	// NodeID is the ID of the specified node(local or remote).
-	NodeID NodeID
-	// Client is true if the message is being sent or received by a client.
-	// In this case, only ClientRequest and ClientResponse events are allowed.
-	Client bool
-}
-
-func (a Address) Equal(other Address) bool {
-	return a.Broadcast == other.Broadcast && a.NodeID == other.NodeID && a.Client == other.Client
-}
-
-func (a Address) Hash() uint64 {
-	h := fnv.New64a()
-	binary.Write(h, binary.BigEndian, a.Broadcast)
-	binary.Write(h, binary.BigEndian, uint64(a.NodeID))
-	binary.Write(h, binary.BigEndian, a.Client)
-	return h.Sum64()
-}
-
 type Message struct {
-	Term  Term
-	From  Address
-	To    Address
-	Event Event
+	Term Term
+	From NodeID
+	To   NodeID
+	// If Client is true, it indicates that the message is
+	// sent to or received from local client. In the case,
+	// The Event must be ClientRequest or ClientResponse,
+	// and From and To are zero.
+	Client bool
+	Event  Event
 }
 
 type Event interface {
@@ -45,6 +26,7 @@ var _ Event = &ConfirmLeader{}
 var _ Event = &SolicitVote{}
 var _ Event = &GrantVote{}
 var _ Event = &AppendEntries{}
+var _ Event = &AcceptEntries{}
 var _ Event = &RejectEntries{}
 var _ Event = &ClientRequest{}
 var _ Event = &ClientResponse{}
@@ -54,52 +36,84 @@ func (*ConfirmLeader) isEvent()  {}
 func (*SolicitVote) isEvent()    {}
 func (*GrantVote) isEvent()      {}
 func (*AppendEntries) isEvent()  {}
+func (*AcceptEntries) isEvent()  {}
 func (*RejectEntries) isEvent()  {}
 func (*ClientRequest) isEvent()  {}
 func (*ClientResponse) isEvent() {}
 
+// Heartbeat is the event sent by the leader to the followers
+// to maintain the leader's authority.
 type Heartbeat struct {
 	CommitIndex Index
 	CommitTerm  Term
 }
 
+// ConfirmLeader is the event sent by the follower to the leader
+// to confirm the leader's authority after receiving a heartbeat.
 type ConfirmLeader struct {
 	CommitIndex  Index
 	HasCommitted bool
 }
 
+// SolicitVote is the event sent by the candidate to the followers
+// to request their votes.
 type SolicitVote struct {
 	LastIndex Index
 	LastTerm  Term
 }
 
+// GrantVote is the event sent by the follower to the candidate
+// to grant its vote.
 type GrantVote struct{}
 
+// AppendEntries is the event sent by the leader to the followers
+// to replicate log entries.
 type AppendEntries struct {
 	BaseIndex Index
 	BaseTerm  Term
-	Entries   []Entry
+	Entries   []*Entry
 }
 
+// AcceptEntries is the event sent by the follower to the leader
+// to accept a set of log entries.
+type AcceptEntries struct {
+	LastIndex Index
+}
+
+// RejectEntries is the event sent by the follower to the leader
+// to reject a set of log entries.
 type RejectEntries struct{}
+
+type RequestID []byte
+
+func (id RequestID) Equal(other RequestID) bool {
+	return bytes.Equal(id, other)
+}
+
+func (id RequestID) Hash() uint64 {
+	h := fnv.New64a()
+	h.Write(id)
+	return h.Sum64()
+}
+
+type RequestType uint8
+
+const (
+	RequestQuery RequestType = iota
+	RequestMutate
+	RequestStatus
+)
 
 type ClientRequest struct {
 	ID      RequestID
 	Type    RequestType
-	Payload []byte
+	Command []byte
 }
 
 type ClientResponse struct {
 	ID      RequestID
 	Type    RequestType
 	Payload []byte
-	Error   error
+	Status  *Status
+	Err     error
 }
-
-type RequestType uint8
-
-const (
-	RequestTypeQuery RequestType = iota
-	RequestTypeMutate
-	RequestTypeStatus
-)
