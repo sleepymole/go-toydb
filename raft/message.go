@@ -1,10 +1,5 @@
 package raft
 
-import (
-	"bytes"
-	"hash/fnv"
-)
-
 type Message struct {
 	Term Term
 	From NodeID
@@ -84,17 +79,7 @@ type AcceptEntries struct {
 // to reject a set of log entries.
 type RejectEntries struct{}
 
-type RequestID []byte
-
-func (id RequestID) Equal(other RequestID) bool {
-	return bytes.Equal(id, other)
-}
-
-func (id RequestID) Hash() uint64 {
-	h := fnv.New64a()
-	h.Write(id)
-	return h.Sum64()
-}
+type RequestID string
 
 type RequestType uint8
 

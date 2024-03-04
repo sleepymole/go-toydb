@@ -3,10 +3,11 @@ package sql
 import (
 	"errors"
 
+	"github.com/emirpasic/gods/v2/sets"
+	"github.com/emirpasic/gods/v2/sets/treeset"
 	"github.com/sleepymole/go-toydb/sql/catalog"
 	"github.com/sleepymole/go-toydb/sql/types"
 	"github.com/sleepymole/go-toydb/util/itertools"
-	"github.com/sleepymole/go-toydb/util/set"
 )
 
 var ErrNotFound = errors.New("sql: not found")
@@ -15,11 +16,15 @@ var ErrNotFound = errors.New("sql: not found")
 type ID = *types.Value
 
 // IDSet is a set of row identifiers.
-type IDSet = *set.HashSet[ID]
+type IDSet = sets.Set[ID]
 
 // NewIDSet returns a new IDSet.
 func NewIDSet() IDSet {
-	return set.NewHashSet[ID]()
+	cmp := func(a, b ID) int {
+		result, _ := a.Compare(b)
+		return result
+	}
+	return treeset.NewWith(cmp)
 }
 
 type Engine interface {

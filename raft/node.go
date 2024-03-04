@@ -8,11 +8,12 @@ import (
 	"math/rand/v2"
 	"slices"
 
+	"github.com/emirpasic/gods/v2/sets"
+	"github.com/emirpasic/gods/v2/sets/hashset"
 	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
-	"github.com/sleepymole/go-toydb/util/set"
 )
 
 var ErrAbort = errors.New("raft: abort")
@@ -49,7 +50,7 @@ const (
 
 type Node struct {
 	id      NodeID
-	peers   set.Set[NodeID]
+	peers   sets.Set[NodeID]
 	term    Term
 	log     *Log
 	state   State
@@ -61,12 +62,12 @@ type Node struct {
 	leader     mo.Option[NodeID]
 	leaderSeen int
 	votedFor   mo.Option[NodeID]
-	forwarded  *set.HashSet[RequestID]
+	forwarded  sets.Set[RequestID]
 
 	// The following fields are used when the node is a candidate.
 	electionElapsed int
 	electionTimeout int
-	votesReceived   set.Set[NodeID]
+	votesReceived   sets.Set[NodeID]
 
 	// The following fields are used when the node is a leader.
 	progress         map[NodeID]*progress
@@ -83,7 +84,7 @@ type progress struct {
 
 func NewNode(
 	id NodeID,
-	peers set.Set[NodeID],
+	peers sets.Set[NodeID],
 	log *Log,
 	state State,
 	nodeCh chan<- *Message,
@@ -249,7 +250,7 @@ func (n *Node) stepFollower(m *Message) error {
 	case *ClientResponse:
 		assert.True(n.isLeader(m.From), "client response from non-leader")
 		if n.forwarded.Contains(e.ID) {
-			n.forwarded.Delete(e.ID)
+			n.forwarded.Remove(e.ID)
 			return n.sendToClient(m.Event)
 		}
 		return nil
@@ -278,7 +279,7 @@ func (n *Node) stepCadidate(m *Message) error {
 		return nil
 	case *GrantVote:
 		n.votesReceived.Add(m.From)
-		if n.votesReceived.Len() >= n.quorum() {
+		if n.votesReceived.Size() >= n.quorum() {
 			return n.becomeLeader()
 		}
 		return nil
@@ -390,7 +391,7 @@ func (n *Node) becomeFollower(leader mo.Option[NodeID], term Term) error {
 	if err := n.abortForwarded(); err != nil {
 		return err
 	}
-	n.forwarded = set.NewHashSet[RequestID]()
+	n.forwarded = hashset.New[RequestID]()
 
 	if leader.IsPresent() {
 		if term == n.term && n.leader != leader {
@@ -419,7 +420,7 @@ func (n *Node) becomeCadidate() error {
 	}
 	n.role = Candidate
 	n.electionTimeout = electionTimeout()
-	n.votesReceived = make(set.Set[NodeID])
+	n.votesReceived.Clear()
 	return n.campaign()
 }
 
@@ -432,7 +433,7 @@ func (n *Node) isLeader(id NodeID) bool {
 }
 
 func (n *Node) quorum() int {
-	return n.peers.Len()/2 + 1
+	return n.peers.Size()/2 + 1
 }
 
 func (n *Node) campaign() error {
@@ -441,7 +442,8 @@ func (n *Node) campaign() error {
 
 func (n *Node) heartbeat() error {
 	commitIndex, commitTerm := n.log.CommitIndex()
-	for peer := range n.peers {
+	n.peers.Add()
+	for _, peer := range n.peers.Values() {
 		if err := n.send(peer, &Heartbeat{
 			CommitIndex: commitIndex,
 			CommitTerm:  commitTerm,
@@ -458,7 +460,7 @@ func (n *Node) propose(command []byte) (Index, error) {
 	if err != nil {
 		return 0, err
 	}
-	for peer := range n.peers {
+	for _, peer := range n.peers.Values() {
 		if err := n.sendLog(peer); err != nil {
 			return 0, err
 		}
@@ -520,18 +522,15 @@ func (n *Node) maybeCommit() (Index, error) {
 }
 
 func (n *Node) abortForwarded() error {
-	var err error
-	n.forwarded.Range(func(id RequestID) bool {
-		err = n.sendToClient(&ClientResponse{
+	for _, id := range n.forwarded.Values() {
+		if err := n.sendToClient(&ClientResponse{
 			ID:  id,
 			Err: ErrAbort,
-		})
-		return err == nil
-	})
-	if err != nil {
-		return err
+		}); err != nil {
+			return err
+		}
 	}
-	n.forwarded = nil
+	n.forwarded.Clear()
 	return nil
 }
 

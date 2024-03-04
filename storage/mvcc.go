@@ -7,10 +7,11 @@ import (
 	"math"
 	"sync"
 
+	"github.com/emirpasic/gods/v2/sets"
+	"github.com/emirpasic/gods/v2/sets/hashset"
 	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
-	"github.com/sleepymole/go-toydb/util/set"
 )
 
 var (
@@ -49,7 +50,7 @@ func (m *MVCC) Begin() (*MVCCTxn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if active.Len() > 0 {
+	if active.Size() > 0 {
 		if err := m.setTxnActiveSnapshotLocked(version, active); err != nil {
 			return nil, err
 		}
@@ -92,7 +93,7 @@ func (m *MVCC) beginReadOnlyInternal(asOf mo.Option[MVCCVersion]) (*MVCCTxn, err
 	// If requested, create the transcation as of a past version, restoring
 	// the active snapshot as of the beginning of that version. Otherwise,
 	// use the latest version and get the current, real-time snapshot.
-	var active set.Set[MVCCVersion]
+	var active sets.Set[MVCCVersion]
 	if asOfVersion, ok := asOf.Get(); ok {
 		if asOfVersion >= version {
 			return nil, fmt.Errorf("version %d does not exists", asOfVersion)
@@ -172,7 +173,7 @@ func (m *MVCC) Status() (*MVCCStatus, error) {
 	}
 	return &MVCCStatus{
 		Versions:   int64(version - 1),
-		ActiveTxns: int64(active.Len()),
+		ActiveTxns: int64(active.Size()),
 		Storage:    engineStatus,
 	}, nil
 }
@@ -193,12 +194,12 @@ func (m *MVCC) setNextVersionLocked(version MVCCVersion) error {
 	return m.mu.engine.Set(mvccNextVersionKey, value)
 }
 
-func (m *MVCC) scanActiveLocked() (set.Set[MVCCVersion], error) {
+func (m *MVCC) scanActiveLocked() (sets.Set[MVCCVersion], error) {
 	iter, err := m.mu.engine.ScanPrefix(mvccTxnActiveKeyPrefix)
 	if err != nil {
 		return nil, err
 	}
-	active := make(set.Set[MVCCVersion])
+	active := hashset.New[MVCCVersion]()
 	walkFunc := func(kv KeyValue) error {
 		version, err := decodeMVCCTxnActiveKey(kv.Key)
 		if err != nil {
@@ -230,13 +231,13 @@ func (m *MVCC) hasTxnActiveLocked(version MVCCVersion) (bool, error) {
 	return true, nil
 }
 
-func (m *MVCC) setTxnActiveSnapshotLocked(version MVCCVersion, active set.Set[MVCCVersion]) error {
+func (m *MVCC) setTxnActiveSnapshotLocked(version MVCCVersion, active sets.Set[MVCCVersion]) error {
 	key := encodeMVCCTxnActiveSnapshotKey(version)
 	value := encodeMVCCTxnActiveSnapshotValue(active)
 	return m.mu.engine.Set(key, value)
 }
 
-func (m *MVCC) getTxnActiveSnapshotLocked(version MVCCVersion) (set.Set[MVCCVersion], error) {
+func (m *MVCC) getTxnActiveSnapshotLocked(version MVCCVersion) (sets.Set[MVCCVersion], error) {
 	key := encodeMVCCTxnActiveSnapshotKey(version)
 	value, err := m.mu.engine.Get(key)
 	if err != nil {
@@ -254,7 +255,7 @@ func (m *MVCC) getTxnActiveSnapshotLocked(version MVCCVersion) (set.Set[MVCCVers
 // uncommitted version is fine.
 func (m *MVCC) writeVersion(key []byte, value mo.Option[[]byte], state *MVCCTxnState) error {
 	minVersion := state.Version + 1
-	for v := range state.Active {
+	for _, v := range state.Active.Values() {
 		minVersion = min(minVersion, v)
 	}
 	m.mu.Lock()
@@ -400,7 +401,7 @@ type MVCCTxn struct {
 type MVCCTxnState struct {
 	Version  MVCCVersion
 	ReadOnly bool
-	Active   set.Set[MVCCVersion]
+	Active   sets.Set[MVCCVersion]
 }
 
 func (m *MVCCTxnState) IsVisible(version MVCCVersion) bool {

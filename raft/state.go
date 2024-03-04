@@ -3,7 +3,7 @@ package raft
 import (
 	"errors"
 
-	"github.com/sleepymole/go-toydb/util/set"
+	"github.com/emirpasic/gods/v2/sets"
 )
 
 // InternalError is an error that is used to wrap internal errors.
@@ -101,7 +101,7 @@ type Query struct {
 	NodeID  NodeID
 	Command []byte
 	Quorum  uint8
-	Votes   set.Set[NodeID]
+	Votes   sets.Set[NodeID]
 }
 
 // Driver is a driver for driving the raft state machine.

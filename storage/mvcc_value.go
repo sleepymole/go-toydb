@@ -1,8 +1,8 @@
 package storage
 
 import (
+	"github.com/emirpasic/gods/v2/sets"
 	"github.com/samber/mo"
-	"github.com/sleepymole/go-toydb/util/set"
 )
 
 var (
@@ -18,11 +18,11 @@ func decodeMVCCNextVersionValue(b []byte) (MVCCVersion, error) {
 	panic("implement me")
 }
 
-func encodeMVCCTxnActiveSnapshotValue(active set.Set[MVCCVersion]) []byte {
+func encodeMVCCTxnActiveSnapshotValue(active sets.Set[MVCCVersion]) []byte {
 	panic("implement me")
 }
 
-func decodeMVCCTxnActiveSnapshotValue(b []byte) (set.Set[MVCCVersion], error) {
+func decodeMVCCTxnActiveSnapshotValue(b []byte) (sets.Set[MVCCVersion], error) {
 	panic("implement me")
 }
 
