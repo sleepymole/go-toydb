@@ -10,9 +10,9 @@ func True(condition bool, msgAndArgs ...any) {
 		} else {
 			msg, ok := msgAndArgs[0].(string)
 			if ok {
-				panic(errMsg + "," + fmt.Sprintf(msg, msgAndArgs[1:]...))
+				panic(errMsg + ", " + fmt.Sprintf(msg, msgAndArgs[1:]...))
 			} else {
-				panic(errMsg + "," + fmt.Sprint(msgAndArgs...))
+				panic(errMsg + ", " + fmt.Sprint(msgAndArgs...))
 			}
 		}
 	}
