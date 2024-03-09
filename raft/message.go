@@ -79,7 +79,7 @@ type AcceptEntries struct {
 // to reject a set of log entries.
 type RejectEntries struct{}
 
-type RequestID string
+type RequestID []byte
 
 type RequestType uint8
 

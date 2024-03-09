@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"slices"
 
 	"github.com/emirpasic/gods/v2/sets"
-	"github.com/emirpasic/gods/v2/sets/hashset"
+	"github.com/emirpasic/gods/v2/sets/treeset"
 	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/assert"
@@ -62,7 +63,7 @@ type Node struct {
 	leader     mo.Option[NodeID]
 	leaderSeen int
 	votedFor   mo.Option[NodeID]
-	forwarded  sets.Set[RequestID]
+	forwarded  *treeset.Set[RequestID]
 
 	// The following fields are used when the node is a candidate.
 	electionElapsed int
@@ -391,7 +392,9 @@ func (n *Node) becomeFollower(leader mo.Option[NodeID], term Term) error {
 	if err := n.abortForwarded(); err != nil {
 		return err
 	}
-	n.forwarded = hashset.New[RequestID]()
+	n.forwarded = treeset.NewWith(func(a, b RequestID) int {
+		return bytes.Compare(a, b)
+	})
 
 	if leader.IsPresent() {
 		if term == n.term && n.leader != leader {
