@@ -1,10 +1,10 @@
 package raft
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
-	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
@@ -34,39 +34,78 @@ var (
 )
 
 func encodeEntryKey(index Index) []byte {
-	panic("implement me")
+	buf := make([]byte, 9)
+	buf[0] = entryKeyTag
+	binary.BigEndian.PutUint64(buf[1:], uint64(index))
+	return buf
 }
 
 func decodeEntryKey(b []byte) (Index, error) {
-	panic("implement me")
+	if len(b) != 9 || b[0] != entryKeyTag {
+		return 0, errors.New("invalid entry key")
+	}
+	return Index(binary.BigEndian.Uint64(b[1:])), nil
 }
 
 func encodeEntryValue(term Term, command []byte) []byte {
-	panic("implement me")
+	buf := make([]byte, 8+len(command))
+	binary.BigEndian.PutUint64(buf, uint64(term))
+	copy(buf[8:], command)
+	return buf
 }
 
 func decodeEntryValue(b []byte) (Term, []byte, error) {
-	panic("implement me")
+	if len(b) < 8 {
+		return 0, nil, errors.New("invalid entry value, too short")
+	}
+	term := Term(binary.BigEndian.Uint64(b))
+	command := make([]byte, len(b)-8)
+	copy(command, b[8:])
+	return term, command, nil
 }
 
 func decodeEntry(key, value []byte) (*Entry, error) {
-	panic("implement me")
+	index, err := decodeEntryKey(key)
+	if err != nil {
+		return nil, err
+	}
+	term, command, err := decodeEntryValue(value)
+	if err != nil {
+		return nil, err
+	}
+	return &Entry{Index: index, Term: term, Command: command}, nil
 }
 
-func encodeTermVoteValue(term Term, votedFor mo.Option[NodeID]) []byte {
-	panic("implement me")
+func encodeTermVoteValue(term Term, votedFor NodeID) []byte {
+	buf := make([]byte, 16)
+	binary.BigEndian.PutUint64(buf, uint64(term))
+	binary.BigEndian.PutUint64(buf[8:], uint64(votedFor))
+	return buf
 }
 
-func decodeTermVoteValue(b []byte) (Term, mo.Option[NodeID], error) {
-	panic("implement me")
+func decodeTermVoteValue(b []byte) (Term, NodeID, error) {
+	if len(b) != 16 {
+		return 0, 0, errors.New("invalid term vote value")
+	}
+	term := Term(binary.BigEndian.Uint64(b))
+	votedFor := NodeID(binary.BigEndian.Uint64(b[8:]))
+	return term, votedFor, nil
 }
 
 func encodeCommitValue(index Index, term Term) []byte {
-	panic("implement me")
+	buf := make([]byte, 16)
+	binary.BigEndian.PutUint64(buf, uint64(index))
+	binary.BigEndian.PutUint64(buf[8:], uint64(term))
+	return buf
 }
 
 func decodeCommitValue(b []byte) (Index, Term, error) {
-	panic("implement me")
+	if len(b) != 16 {
+		return 0, 0, errors.New("invalid commit value")
+	}
+	index := Index(binary.BigEndian.Uint64(b))
+	term := Term(binary.BigEndian.Uint64(b[8:]))
+	return index, term, nil
 }
 
 // Log is a persistent log of entries. It is the source of truth for
@@ -147,7 +186,7 @@ func (l *Log) LastIndex() (Index, Term) {
 	return l.lastIndex, l.lastTerm
 }
 
-func (l *Log) GetTerm() (_ Term, votedFor mo.Option[NodeID], _ error) {
+func (l *Log) GetTerm() (_ Term, votedFor NodeID, _ error) {
 	value, err := l.engine.Get(termVoteKey)
 	if err != nil {
 		return 0, votedFor, err
@@ -155,7 +194,7 @@ func (l *Log) GetTerm() (_ Term, votedFor mo.Option[NodeID], _ error) {
 	return decodeTermVoteValue(value)
 }
 
-func (l *Log) SetTerm(term Term, votedFor mo.Option[NodeID]) error {
+func (l *Log) SetTerm(term Term, votedFor NodeID) error {
 	value := encodeTermVoteValue(term, votedFor)
 	if err := l.engine.Set(termVoteKey, value); err != nil {
 		return err

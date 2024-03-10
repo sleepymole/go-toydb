@@ -11,7 +11,6 @@ import (
 
 	"github.com/emirpasic/gods/v2/sets"
 	"github.com/emirpasic/gods/v2/sets/treeset"
-	"github.com/samber/mo"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
@@ -60,9 +59,9 @@ type Node struct {
 	role    Role
 
 	// The following fields are used when the node is a follower.
-	leader     mo.Option[NodeID]
+	leader     NodeID
 	leaderSeen int
-	votedFor   mo.Option[NodeID]
+	votedFor   NodeID
 	forwarded  *treeset.Set[RequestID]
 
 	// The following fields are used when the node is a candidate.
@@ -133,7 +132,7 @@ func (n *Node) Step(m *Message) error {
 	// follower in it and step the message. If the message is a Heartbeat
 	// or AppendEntries from the leader, stepping it will follow the leader.
 	if m.Term > n.term {
-		if err := n.becomeFollower(mo.None[NodeID](), m.Term); err != nil {
+		if err := n.becomeFollower(0, m.Term); err != nil {
 			return err
 		}
 	}
@@ -160,11 +159,11 @@ func (n *Node) stepFollower(m *Message) error {
 
 	switch e := m.Event.(type) {
 	case *Heartbeat:
-		if n.leader.IsAbsent() {
-			if err := n.becomeFollower(mo.Some(m.From), m.Term); err != nil {
+		if n.leader == 0 {
+			if err := n.becomeFollower(m.From, m.Term); err != nil {
 				return err
 			}
-		} else if n.leader.MustGet() != m.From {
+		} else if n.leader != m.From {
 			return fmt.Errorf("received heartbeat from unexpected leader %d", m.From)
 		}
 
@@ -194,11 +193,11 @@ func (n *Node) stepFollower(m *Message) error {
 			HasCommitted: hasCommitted,
 		})
 	case *AppendEntries:
-		if n.leader.IsAbsent() {
-			if err := n.becomeFollower(mo.Some(m.From), m.Term); err != nil {
+		if n.leader == 0 {
+			if err := n.becomeFollower(m.From, m.Term); err != nil {
 				return err
 			}
-		} else if n.leader.MustGet() != m.From {
+		} else if n.leader != m.From {
 			return fmt.Errorf("received heartbeat from unexpected leader %d", m.From)
 		}
 		// Append the entries, if possible.
@@ -220,16 +219,16 @@ func (n *Node) stepFollower(m *Message) error {
 		})
 	case *SolicitVote:
 		// If we already voted for someone else, ignore it.
-		if n.votedFor.IsPresent() && n.votedFor.MustGet() != m.From {
+		if n.votedFor != 0 && n.votedFor != m.From {
 			return nil
 		}
 		// Only vote if the candidate's log is at least as up-to-date as ours.
 		logIndex, logTerm := n.log.LastIndex()
 		if e.LastTerm > logTerm || e.LastTerm == logTerm && e.LastIndex >= logIndex {
-			if err := n.log.SetTerm(n.term, mo.Some(m.From)); err != nil {
+			if err := n.log.SetTerm(n.term, m.From); err != nil {
 				return err
 			}
-			n.votedFor = mo.Some(m.From)
+			n.votedFor = m.From
 			return n.send(m.From, &GrantVote{})
 		}
 		return nil
@@ -239,7 +238,7 @@ func (n *Node) stepFollower(m *Message) error {
 		return nil
 	case *ClientRequest:
 		assert.True(m.Client, "client request from non-client")
-		if n.leader.IsPresent() {
+		if n.leader != 0 {
 			n.forwarded.Add(e.ID)
 			return n.send(m.From, m.Event)
 		} else {
@@ -268,7 +267,7 @@ func (n *Node) stepCadidate(m *Message) error {
 	// If we receive a heartbeat or append entries in this term, we lost the
 	// election and have a new leader. Follow the leader and step the message.
 	if isHeartbeat || isAppendEntries {
-		if err := n.becomeFollower(mo.Some(m.From), m.Term); err != nil {
+		if err := n.becomeFollower(m.From, m.Term); err != nil {
 			return err
 		}
 		return n.stepFollower(m)
@@ -435,7 +434,7 @@ func (n *Node) Tick() error {
 	}
 }
 
-func (n *Node) becomeFollower(leader mo.Option[NodeID], term Term) error {
+func (n *Node) becomeFollower(leader NodeID, term Term) error {
 	assert.True(term >= n.term)
 
 	if err := n.abortForwarded(); err != nil {
@@ -445,11 +444,11 @@ func (n *Node) becomeFollower(leader mo.Option[NodeID], term Term) error {
 		return bytes.Compare(a, b)
 	})
 
-	if leader.IsPresent() {
+	if leader != 0 {
 		if term == n.term && n.leader != leader {
 			return fmt.Errorf(
 				"multiple leaders in same term %d, %d vs %d",
-				n.term, n.leader.MustGet(), leader.MustGet(),
+				n.term, n.leader, leader,
 			)
 		}
 		n.term = term
@@ -460,8 +459,8 @@ func (n *Node) becomeFollower(leader mo.Option[NodeID], term Term) error {
 			return fmt.Errorf("cannot become leaderless follower in current term %d", n.term)
 		}
 		n.term = term
-		n.leader = mo.None[NodeID]()
-		n.votedFor = mo.None[NodeID]()
+		n.leader = 0
+		n.votedFor = 0
 	}
 	return n.log.SetTerm(n.term, n.votedFor)
 }
@@ -496,7 +495,7 @@ func (n *Node) becomeLeader() error {
 }
 
 func (n *Node) isLeader(id NodeID) bool {
-	return n.leader.IsPresent() && n.leader.MustGet() == id
+	return n.leader != 0 && n.leader == id
 }
 
 func (n *Node) quorum() int {
@@ -507,7 +506,7 @@ func (n *Node) campaign() error {
 	n.term++
 	n.votesReceived.Clear()
 	n.votesReceived.Add(n.id) // Vote for ourselves.
-	if err := n.log.SetTerm(n.term, mo.Some(n.id)); err != nil {
+	if err := n.log.SetTerm(n.term, n.id); err != nil {
 		return err
 	}
 	lastIndex, lastTerm := n.log.LastIndex()
