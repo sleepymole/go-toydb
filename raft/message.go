@@ -1,5 +1,19 @@
 package raft
 
+import "encoding/gob"
+
+func init() {
+	gob.Register(&Heartbeat{})
+	gob.Register(&ConfirmLeader{})
+	gob.Register(&SolicitVote{})
+	gob.Register(&GrantVote{})
+	gob.Register(&AppendEntries{})
+	gob.Register(&AcceptEntries{})
+	gob.Register(&RejectEntries{})
+	gob.Register(&ClientRequest{})
+	gob.Register(&ClientResponse{})
+}
+
 type Message struct {
 	Term Term
 	From NodeID
@@ -7,7 +21,7 @@ type Message struct {
 	// If Client is true, it indicates that the message is
 	// sent to or received from local client. In the case,
 	// The Event must be ClientRequest or ClientResponse,
-	// and From and To are zero.
+	// and Term, From, To must be zero.
 	Client bool
 	Event  Event
 }
@@ -50,7 +64,7 @@ type ConfirmLeader struct {
 	HasCommitted bool
 }
 
-// SolicitVote is the event sent by the candidate to the followers
+// SolicitVote is the event sent by the candidate to the peers
 // to request their votes.
 type SolicitVote struct {
 	LastIndex Index
@@ -96,9 +110,9 @@ type ClientRequest struct {
 }
 
 type ClientResponse struct {
-	ID      RequestID
-	Type    RequestType
-	Payload []byte
-	Status  *Status
-	Err     error
+	ID     RequestID
+	Type   RequestType
+	Result []byte
+	Status *Status
+	Err    error
 }

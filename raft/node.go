@@ -55,7 +55,7 @@ type Node struct {
 	term    Term
 	log     *Log
 	state   State
-	nodeCh  chan<- *Message
+	msgCh   chan<- *Message
 	stateCh chan<- Instruction
 	role    Role
 
@@ -88,10 +88,10 @@ func NewNode(
 	peers sets.Set[NodeID],
 	log *Log,
 	state State,
-	nodeCh chan<- *Message,
+	msgCh chan<- *Message,
 ) (*Node, error) {
 	stateCh := make(chan Instruction, 1)
-	driver := NewDriver(id, stateCh, nodeCh)
+	driver := NewDriver(id, stateCh, msgCh)
 	if err := driver.ApplyLog(state, log); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func NewNode(
 		term:     term,
 		log:      log,
 		state:    state,
-		nodeCh:   nodeCh,
+		msgCh:    msgCh,
 		stateCh:  stateCh,
 		role:     Follower,
 		votedFor: votedFor,
@@ -299,7 +299,7 @@ func (n *Node) stepCadidate(m *Message) error {
 func (n *Node) stepLeader(m *Message) error {
 	assert.True(m.Client || m.Term == n.term)
 
-	switch e := m.Event.(type) {
+	switch event := m.Event.(type) {
 	case *Heartbeat:
 		return fmt.Errorf("saw other leader %d in term %d", m.From, m.Term)
 	case *AppendEntries:
@@ -310,10 +310,10 @@ func (n *Node) stepLeader(m *Message) error {
 		// log, replicate the log to it.
 		n.stateCh <- &VoteInstruction{
 			Term:   m.Term,
-			Index:  e.CommitIndex,
+			Index:  event.CommitIndex,
 			NodeID: m.From,
 		}
-		if !e.HasCommitted {
+		if !event.HasCommitted {
 			return n.sendLog(m.From)
 		}
 		return nil
@@ -321,13 +321,12 @@ func (n *Node) stepLeader(m *Message) error {
 		// A follower appended log entries we sent it. Record its progress
 		// and attempt to commit new entries.
 		lastIndex, _ := n.log.LastIndex()
-		assert.True(e.LastIndex <= lastIndex, "follower's last index is ahead of ours")
+		assert.True(event.LastIndex <= lastIndex, "follower's last index is ahead of ours")
 
-		if e.LastIndex > n.progress[m.From].next {
-			n.progress[m.From].last = e.LastIndex
-			n.progress[m.From].next = e.LastIndex + 1
-			_, err := n.maybeCommit()
-			return err
+		if event.LastIndex > n.progress[m.From].next {
+			n.progress[m.From].last = event.LastIndex
+			n.progress[m.From].next = event.LastIndex + 1
+			return n.maybeCommit()
 		}
 		return nil
 	case *RejectEntries:
@@ -340,15 +339,65 @@ func (n *Node) stepLeader(m *Message) error {
 		n.progress[m.From].next--
 		return n.sendLog(m.From)
 	case *ClientRequest:
-		switch e.Type {
+		switch event.Type {
 		case RequestQuery:
-			panic("implement me")
+			commitIndex, _ := n.log.CommitIndex()
+			n.stateCh <- &QueryInstruction{
+				ID:      event.ID,
+				NodeID:  m.From,
+				Command: event.Command,
+				Term:    n.term,
+				Index:   commitIndex,
+				Quorum:  n.quorum(),
+			}
+			n.stateCh <- &VoteInstruction{
+				Term:   n.term,
+				Index:  commitIndex,
+				NodeID: n.id,
+			}
+			return n.heartbeat()
 		case RequestMutate:
-			panic("implement me")
+			index, err := n.propose(event.Command)
+			if err != nil {
+				return err
+			}
+			n.stateCh <- &NotifyInstruction{
+				ID:     event.ID,
+				NodeID: m.From,
+				Index:  index,
+			}
+			if n.peers.Empty() {
+				return n.maybeCommit()
+			}
+			return nil
 		case RequestStatus:
-			panic("implement me")
+			engineStatus, err := n.log.Status()
+			if err != nil {
+				return err
+			}
+			nodeLastIndex := make(map[NodeID]Index)
+			for peer, progress := range n.progress {
+				nodeLastIndex[peer] = progress.last
+			}
+			nodeLastIndex[n.id], _ = n.log.LastIndex()
+			commitIndex, _ := n.log.CommitIndex()
+			status := &Status{
+				Server:        n.id,
+				Leader:        n.id,
+				Term:          n.term,
+				NodeLastIndex: nodeLastIndex,
+				CommitIndex:   commitIndex,
+				Storage:       engineStatus.Name,
+				StorageSize:   engineStatus.Size,
+			}
+			n.stateCh <- &StatusInstruction{
+				ID:     event.ID,
+				NodeID: m.From,
+				Status: status,
+			}
+			return nil
 		default:
-			return fmt.Errorf("unknown request type %d", e.Type)
+			return fmt.Errorf("unknown request type %d", event.Type)
 		}
 	case *SolicitVote:
 		// Ignore it since we won the election.
@@ -357,7 +406,7 @@ func (n *Node) stepLeader(m *Message) error {
 		// Ignore it since we won the election.
 		return nil
 	default:
-		return fmt.Errorf("received unexpected event %T", e)
+		return fmt.Errorf("received unexpected event %T", event)
 	}
 }
 
@@ -428,7 +477,22 @@ func (n *Node) becomeCadidate() error {
 }
 
 func (n *Node) becomeLeader() error {
-	panic("implement me")
+	n.progress = make(map[NodeID]*progress)
+	for _, peer := range n.peers.Values() {
+		n.progress[peer] = &progress{
+			next: 1,
+			last: 0,
+		}
+	}
+	n.role = Leader
+	if err := n.heartbeat(); err != nil {
+		return err
+	}
+
+	// Propose an empty command when assuming leadership, to disambiguate
+	// previous entries in the log. See section 8 of the raft paper.
+	_, err := n.propose(nil)
+	return err
 }
 
 func (n *Node) isLeader(id NodeID) bool {
@@ -440,7 +504,22 @@ func (n *Node) quorum() int {
 }
 
 func (n *Node) campaign() error {
-	panic("implement me")
+	n.term++
+	n.votesReceived.Clear()
+	n.votesReceived.Add(n.id) // Vote for ourselves.
+	if err := n.log.SetTerm(n.term, mo.Some(n.id)); err != nil {
+		return err
+	}
+	lastIndex, lastTerm := n.log.LastIndex()
+	for _, peer := range n.peers.Values() {
+		if err := n.send(peer, &SolicitVote{
+			LastIndex: lastIndex,
+			LastTerm:  lastTerm,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (n *Node) heartbeat() error {
@@ -471,7 +550,7 @@ func (n *Node) propose(command []byte) (Index, error) {
 	return index, nil
 }
 
-func (n *Node) maybeCommit() (Index, error) {
+func (n *Node) maybeCommit() error {
 	var lastIndexes []Index
 	for _, progress := range n.progress {
 		lastIndexes = append(lastIndexes, progress.last)
@@ -483,7 +562,7 @@ func (n *Node) maybeCommit() (Index, error) {
 
 	// A 0 commit index means we haven't committed anything yet.
 	if commitIndex == 0 {
-		return 0, nil
+		return nil
 	}
 	// Make sure the commit index does not regress.
 	oldCommitIndex, _ := n.log.CommitIndex()
@@ -496,32 +575,32 @@ func (n *Node) maybeCommit() (Index, error) {
 	entry, err := n.log.Get(commitIndex)
 	if err != nil {
 		if err == storage.ErrNotFound {
-			return 0, fmt.Errorf("missing entry at index %d", commitIndex)
+			return fmt.Errorf("missing entry at index %d", commitIndex)
 		}
-		return 0, err
+		return err
 	}
 	// We can only safely commit up to an entry from our own term,
 	// see figure 8 in the raft paper.
 	if entry.Term != n.term {
-		return oldCommitIndex, nil
+		return nil
 	}
 
 	if commitIndex > oldCommitIndex {
 		if err := n.log.Commit(commitIndex); err != nil {
-			return 0, err
+			return err
 		}
 		it, err := n.log.Scan(oldCommitIndex+1, commitIndex+1)
 		if err != nil {
-			return 0, err
+			return err
 		}
 		if err := itertools.Walk(it, func(entry *Entry) error {
 			n.stateCh <- &ApplyInstruction{Entry: entry}
 			return nil
 		}); err != nil {
-			return 0, err
+			return err
 		}
 	}
-	return commitIndex, nil
+	return nil
 }
 
 func (n *Node) abortForwarded() error {
@@ -538,7 +617,7 @@ func (n *Node) abortForwarded() error {
 }
 
 func (n *Node) send(to NodeID, event Event) error {
-	n.nodeCh <- &Message{
+	n.msgCh <- &Message{
 		Term:  n.term,
 		From:  n.id,
 		To:    to,
@@ -548,7 +627,7 @@ func (n *Node) send(to NodeID, event Event) error {
 }
 
 func (n *Node) sendToClient(event Event) error {
-	n.nodeCh <- &Message{
+	n.msgCh <- &Message{
 		Term:   n.term,
 		Client: true,
 		Event:  event,
