@@ -5,21 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
 )
-
-type (
-	Index uint64
-	Term  uint64
-)
-
-type Entry struct {
-	Index   Index
-	Term    Term
-	Command []byte
-}
 
 const (
 	entryKeyTag    = byte(0x00)
@@ -64,7 +54,7 @@ func decodeEntryValue(b []byte) (Term, []byte, error) {
 	return term, command, nil
 }
 
-func decodeEntry(key, value []byte) (*Entry, error) {
+func decodeEntry(key, value []byte) (*raftpb.Entry, error) {
 	index, err := decodeEntryKey(key)
 	if err != nil {
 		return nil, err
@@ -73,7 +63,7 @@ func decodeEntry(key, value []byte) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Entry{Index: index, Term: term, Command: command}, nil
+	return &raftpb.Entry{Index: index, Term: term, Command: command}, nil
 }
 
 func encodeTermVoteValue(term Term, votedFor NodeID) []byte {
@@ -247,7 +237,7 @@ func (l *Log) maybeFlush() error {
 	return nil
 }
 
-func (l *Log) Get(index Index) (*Entry, error) {
+func (l *Log) Get(index Index) (*raftpb.Entry, error) {
 	key := encodeEntryKey(index)
 	value, err := l.engine.Get(key)
 	if err != nil {
@@ -267,14 +257,14 @@ func (l *Log) Has(index Index, term Term) (bool, error) {
 	return entry.Term == term, nil
 }
 
-func (l *Log) Scan(start, end Index) (itertools.Iterator[*Entry], error) {
+func (l *Log) Scan(start, end Index) (itertools.Iterator[*raftpb.Entry], error) {
 	from := encodeEntryKey(start)
 	to := encodeEntryKey(end)
 	it, err := l.engine.Scan(rangeutil.Range(from, to))
 	if err != nil {
 		return nil, err
 	}
-	return itertools.Map(it, func(kv storage.KeyValue) (*Entry, error) {
+	return itertools.Map(it, func(kv storage.KeyValue) (*raftpb.Entry, error) {
 		return decodeEntry(kv.Key, kv.Value)
 	}), nil
 }
@@ -286,7 +276,7 @@ func (l *Log) Scan(start, end Index) (itertools.Iterator[*Entry], error) {
 // at most lastIndex+1 and at least commitIndex+1. When splicing, the
 // log will overwrite any existing entries and truncate any existing
 // entries after the last spliced entry.
-func (l *Log) Splice(entries []*Entry) (Index, error) {
+func (l *Log) Splice(entries []*raftpb.Entry) (Index, error) {
 	if len(entries) == 0 {
 		return l.lastIndex, nil
 	}

@@ -4,8 +4,10 @@ import (
 	"errors"
 
 	"github.com/emirpasic/gods/v2/sets/hashset"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
+	"github.com/sleepymole/go-toydb/util/protoutil"
 )
 
 // InternalError is an error that is used to wrap internal errors.
@@ -41,7 +43,7 @@ type State interface {
 	//
 	// If InternalError is returned, the raft node will be terminated.
 	// Any other error is considered applied and returned to the caller.
-	Apply(entry *Entry) ([]byte, error)
+	Apply(entry *raftpb.Entry) ([]byte, error)
 	// Query queries the state machine with the given command.
 	Query(command []byte) ([]byte, error)
 }
@@ -70,7 +72,7 @@ type AbortInstruction struct{}
 
 // ApplyInstruction is the instruction to apply a log entry.
 type ApplyInstruction struct {
-	Entry *Entry
+	Entry *raftpb.Entry
 }
 
 // NotifyInstruction is the instruction to notify the given node with
@@ -97,7 +99,7 @@ type QueryInstruction struct {
 type StatusInstruction struct {
 	ID     RequestID
 	NodeID NodeID
-	Status *Status
+	Status *raftpb.Status
 }
 
 // VoteInstruction is the instruction to vote for the given term and index.
@@ -133,12 +135,12 @@ type Notify struct {
 type Driver struct {
 	nodeID   NodeID
 	stateCh  <-chan Instruction
-	msgCh    chan<- *Message
+	msgCh    chan<- *raftpb.Message
 	notifies []*Notify
 	queries  []*Query
 }
 
-func NewDriver(nodeID NodeID, stateCh <-chan Instruction, msgCh chan<- *Message) *Driver {
+func NewDriver(nodeID NodeID, stateCh <-chan Instruction, msgCh chan<- *raftpb.Message) *Driver {
 	return &Driver{
 		nodeID:  nodeID,
 		stateCh: stateCh,
@@ -168,7 +170,7 @@ func (d *Driver) ApplyLog(state State, log *Log) error {
 		if err != nil {
 			return err
 		}
-		if err := itertools.Walk(scan, func(entry *Entry) error {
+		if err := itertools.Walk(scan, func(entry *raftpb.Entry) error {
 			return d.Apply(state, entry)
 		}); err != nil {
 			return err
@@ -177,7 +179,7 @@ func (d *Driver) ApplyLog(state State, log *Log) error {
 	return nil
 }
 
-func (d *Driver) Apply(state State, entry *Entry) error {
+func (d *Driver) Apply(state State, entry *raftpb.Entry) error {
 	result, err := state.Apply(entry)
 	if IsInternalError(err) {
 		return err
@@ -208,10 +210,10 @@ func (d *Driver) execute(instruction Instruction, state State) error {
 				Index:  instruction.Index,
 			})
 		} else {
-			if err := d.send(instruction.NodeID, &ClientResponse{
-				ID:   instruction.ID,
-				Type: RequestMutate,
-				Err:  ErrAbort,
+			if err := d.sendResponse(instruction.NodeID, &raftpb.ClientResponse{
+				Id:    instruction.ID,
+				Type:  raftpb.ClientRequest_MUTATE,
+				Error: requestAborted,
 			}); err != nil {
 				return err
 			}
@@ -229,12 +231,12 @@ func (d *Driver) execute(instruction Instruction, state State) error {
 		})
 		return nil
 	case *StatusInstruction:
-		status := *instruction.Status
+		status := protoutil.Clone(instruction.Status)
 		status.ApplyIndex = state.AppliedIndex()
-		return d.send(instruction.NodeID, &ClientResponse{
-			ID:     instruction.ID,
-			Type:   RequestStatus,
-			Status: &status,
+		return d.sendResponse(instruction.NodeID, &raftpb.ClientResponse{
+			Id:     instruction.ID,
+			Type:   raftpb.ClientRequest_STATUS,
+			Status: status,
 		})
 	case *VoteInstruction:
 		d.queryVote(instruction.Term, instruction.Index, instruction.NodeID)
@@ -246,10 +248,10 @@ func (d *Driver) execute(instruction Instruction, state State) error {
 
 func (d *Driver) notifyAbort() error {
 	for _, notify := range d.notifies {
-		if err := d.send(notify.NodeID, &ClientResponse{
-			ID:   notify.ID,
-			Type: RequestMutate,
-			Err:  ErrAbort,
+		if err := d.sendResponse(notify.NodeID, &raftpb.ClientResponse{
+			Id:    notify.ID,
+			Type:  raftpb.ClientRequest_MUTATE,
+			Error: requestAborted,
 		}); err != nil {
 			return err
 		}
@@ -270,11 +272,11 @@ func (d *Driver) notifyApplied(index Index, result []byte, err error) error {
 	d.notifies = pending
 
 	for _, notify := range ready {
-		if err := d.send(notify.NodeID, &ClientResponse{
-			ID:     notify.ID,
-			Type:   RequestMutate,
+		if err := d.sendResponse(notify.NodeID, &raftpb.ClientResponse{
+			Id:     notify.ID,
+			Type:   raftpb.ClientRequest_MUTATE,
 			Result: result,
-			Err:    err,
+			Error:  requestAborted,
 		}); err != nil {
 			return err
 		}
@@ -284,10 +286,10 @@ func (d *Driver) notifyApplied(index Index, result []byte, err error) error {
 
 func (d *Driver) queryAbort() error {
 	for _, query := range d.queries {
-		if err := d.send(query.NodeID, &ClientResponse{
-			ID:   query.ID,
-			Type: RequestQuery,
-			Err:  ErrAbort,
+		if err := d.sendResponse(query.NodeID, &raftpb.ClientResponse{
+			Id:    query.ID,
+			Type:  raftpb.ClientRequest_QUERY,
+			Error: requestAborted,
 		}); err != nil {
 			return err
 		}
@@ -310,17 +312,17 @@ func (d *Driver) queryExecute(state State) error {
 	for _, query := range ready {
 		result, err := state.Query(query.Command)
 		if err != nil {
-			if err := d.send(query.NodeID, &ClientResponse{
-				ID:   query.ID,
-				Type: RequestQuery,
-				Err:  err,
+			if err := d.sendResponse(query.NodeID, &raftpb.ClientResponse{
+				Id:    query.ID,
+				Type:  raftpb.ClientRequest_QUERY,
+				Error: requestAborted,
 			}); err != nil {
 				return err
 			}
 		} else {
-			if err := d.send(query.NodeID, &ClientResponse{
-				ID:     query.ID,
-				Type:   RequestQuery,
+			if err := d.sendResponse(query.NodeID, &raftpb.ClientResponse{
+				Id:     query.ID,
+				Type:   raftpb.ClientRequest_QUERY,
 				Result: result,
 			}); err != nil {
 				return err
@@ -338,12 +340,14 @@ func (d *Driver) queryVote(term Term, index Index, nodeID NodeID) {
 	}
 }
 
-func (d *Driver) send(to NodeID, event Event) error {
-	d.msgCh <- &Message{
-		From:  d.nodeID,
-		To:    to,
-		Term:  0, // TODO: set correct term
-		Event: event,
+func (d *Driver) sendResponse(to NodeID, resp *raftpb.ClientResponse) error {
+	d.msgCh <- &raftpb.Message{
+		From: d.nodeID,
+		To:   to,
+		Term: 0, // TODO: set correct term
+		Event: &raftpb.Message_ClientResponse{
+			ClientResponse: resp,
+		},
 	}
 	return nil
 }

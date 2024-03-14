@@ -2,6 +2,7 @@ package raft
 
 import (
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -10,29 +11,28 @@ import (
 	"github.com/emirpasic/gods/v2/sets/hashset"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/util/assert"
 )
 
 const tickInterval = time.Millisecond * 100
 
-type Server struct {
-	node      *Node
-	addr      string
-	peers     map[NodeID]string
-	peerConns map[NodeID]net.Conn
-	msgInCh   chan *Message
-	msgOutCh  chan *Message
-	clientCh  chan lo.Tuple2[*ClientRequest, chan *ClientResponse]
+func genertateRequestID() RequestID {
+	uuid := uuid.New()
+	return RequestID(uuid[:])
 }
 
-func NewServer(
-	id NodeID,
-	addr string,
-	peers map[NodeID]string,
-	log *Log,
-	state State,
-) (*Server, error) {
-	msgOutCh := make(chan *Message, 1024)
+type Server struct {
+	node      *Node
+	peers     map[NodeID]string
+	peerConns map[NodeID]net.Conn
+	msgInCh   chan *raftpb.Message
+	msgOutCh  chan *raftpb.Message
+	clientCh  chan lo.Tuple2[*raftpb.ClientRequest, chan *raftpb.ClientResponse]
+}
+
+func NewServer(id NodeID, peers map[NodeID]string, log *Log, state State) (*Server, error) {
+	msgOutCh := make(chan *raftpb.Message, 1024)
 	peerSet := hashset.New[NodeID]()
 	for id := range peers {
 		peerSet.Add(id)
@@ -41,11 +41,10 @@ func NewServer(
 	if err != nil {
 		return nil, err
 	}
-	msgInCh := make(chan *Message, 1024)
-	clientCh := make(chan lo.Tuple2[*ClientRequest, chan *ClientResponse], 1024)
+	msgInCh := make(chan *raftpb.Message, 1024)
+	clientCh := make(chan lo.Tuple2[*raftpb.ClientRequest, chan *raftpb.ClientResponse], 1024)
 	return &Server{
 		node:     node,
-		addr:     addr,
 		peers:    peers,
 		msgInCh:  msgInCh,
 		msgOutCh: msgOutCh,
@@ -53,15 +52,11 @@ func NewServer(
 	}, nil
 }
 
-func (s *Server) Serve() error {
+func (s *Server) Serve(l net.Listener) error {
 	go s.eventLoop()
 
-	ln, err := net.Listen("tcp", s.addr)
-	if err != nil {
-		return err
-	}
 	for {
-		conn, err := ln.Accept()
+		conn, err := l.Accept()
 		if err != nil {
 			return err
 		}
@@ -70,50 +65,54 @@ func (s *Server) Serve() error {
 }
 
 func (s *Server) Mutate(command []byte) ([]byte, error) {
-	req := &ClientRequest{
-		ID:      makeRequestID(),
-		Type:    RequestMutate,
+	req := &raftpb.ClientRequest{
+		Id:      genertateRequestID(),
+		Type:    raftpb.ClientRequest_MUTATE,
 		Command: command,
 	}
-	respCh := make(chan *ClientResponse, 1)
+	respCh := make(chan *raftpb.ClientResponse, 1)
 	s.clientCh <- lo.T2(req, respCh)
 	resp := <-respCh
-	return resp.Result, resp.Err
+	if resp.Error != "" {
+		return resp.Result, errors.New(resp.Error)
+	}
+	return resp.Result, nil
 }
 
 func (s *Server) Query(command []byte) ([]byte, error) {
-	req := &ClientRequest{
-		ID:      makeRequestID(),
-		Type:    RequestQuery,
+	req := &raftpb.ClientRequest{
+		Id:      genertateRequestID(),
+		Type:    raftpb.ClientRequest_QUERY,
 		Command: command,
 	}
-	respCh := make(chan *ClientResponse, 1)
+	respCh := make(chan *raftpb.ClientResponse, 1)
 	s.clientCh <- lo.T2(req, respCh)
 	resp := <-respCh
-	return resp.Result, resp.Err
-}
-
-func (s *Server) Status() (*Status, error) {
-	req := &ClientRequest{
-		ID:   makeRequestID(),
-		Type: RequestStatus,
+	if resp.Error != "" {
+		return resp.Result, errors.New(resp.Error)
 	}
-	respCh := make(chan *ClientResponse, 1)
-	s.clientCh <- lo.T2(req, respCh)
-	resp := <-respCh
-	return resp.Status, resp.Err
+	return resp.Result, nil
 }
 
-func makeRequestID() RequestID {
-	uuid := uuid.New()
-	return RequestID(uuid[:])
+func (s *Server) Status() (*raftpb.Status, error) {
+	req := &raftpb.ClientRequest{
+		Id:   genertateRequestID(),
+		Type: raftpb.ClientRequest_STATUS,
+	}
+	respCh := make(chan *raftpb.ClientResponse, 1)
+	s.clientCh <- lo.T2(req, respCh)
+	resp := <-respCh
+	if resp.Error != "" {
+		return resp.Status, errors.New(resp.Error)
+	}
+	return resp.Status, nil
 }
 
 func (s *Server) eventLoop() error {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 
-	respChs := make(map[string]chan *ClientResponse)
+	respChs := make(map[string]chan *raftpb.ClientResponse)
 
 	for {
 		select {
@@ -132,13 +131,12 @@ func (s *Server) eventLoop() error {
 			if !ok {
 				return nil
 			}
-			if msg.Client {
-				resp, ok := msg.Event.(*ClientResponse)
-				if ok {
-					respCh, ok := respChs[string(resp.ID)]
+			if msg.To == 0 {
+				if resp := msg.GetClientResponse(); resp != nil {
+					respCh, ok := respChs[string(resp.Id)]
 					if ok {
 						respCh <- resp
-						delete(respChs, string(resp.ID))
+						delete(respChs, string(resp.Id))
 					}
 				}
 				continue
@@ -150,25 +148,27 @@ func (s *Server) eventLoop() error {
 				return nil
 			}
 			req, respCh := tuple.Unpack()
-			msg := &Message{
-				Client: true,
-				Event:  req,
+			msg := &raftpb.Message{
+				Event: &raftpb.Message_ClientRequest{
+					ClientRequest: req,
+				},
 			}
 			if err := s.node.Step(msg); err != nil {
 				return err
 			}
-			respChs[string(req.ID)] = respCh
+			respChs[string(req.Id)] = respCh
 		}
 	}
 }
 
-func (s *Server) send(to NodeID, msg *Message) {
+func (s *Server) send(to NodeID, msg *raftpb.Message) {
 	conn, err := s.getConn(to)
 	if err != nil {
 		slog.Error("failed to get connection to peer %d: %v", to, err)
 		return
 	}
 
+	// TODO: Use gRPC instead of sending gob-encoded messages over TCP.
 	encoder := gob.NewEncoder(conn)
 	if err := encoder.Encode(msg); err != nil {
 		_ = conn.Close()
@@ -197,9 +197,10 @@ func (s *Server) returnConn(id NodeID, conn net.Conn) {
 func (s *Server) receiveLoop(conn net.Conn) {
 	defer conn.Close()
 
+	// TODO: Use gRPC instead of sending gob-encoded messages over TCP.
 	decoder := gob.NewDecoder(conn)
 	for {
-		var msg Message
+		var msg raftpb.Message
 		if err := decoder.Decode(&msg); err != nil {
 			slog.Error("failed to decode message: %v", err)
 			return

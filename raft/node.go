@@ -3,7 +3,6 @@ package raft
 import (
 	"bytes"
 	"cmp"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -11,34 +10,28 @@ import (
 
 	"github.com/emirpasic/gods/v2/sets"
 	"github.com/emirpasic/gods/v2/sets/treeset"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
 )
 
-var ErrAbort = errors.New("raft: abort")
-
-type NodeID uint8
-
 const (
 	defaultHeartbeatTick = 3
 	defaultElectionTick  = 10
+	requestAborted       = "request aborted"
 )
 
 func electionTimeout() int {
 	return defaultElectionTick + rand.N(defaultElectionTick)
 }
 
-type Status struct {
-	Server        NodeID
-	Leader        NodeID
-	Term          Term
-	NodeLastIndex map[NodeID]Index
-	CommitIndex   Index
-	ApplyIndex    Index
-	Storage       string
-	StorageSize   int64
-}
+type (
+	NodeID    = uint64
+	Term      = uint64
+	Index     = uint64
+	RequestID = []byte
+)
 
 type Role uint8
 
@@ -54,7 +47,7 @@ type Node struct {
 	term    Term
 	log     *Log
 	state   State
-	msgCh   chan<- *Message
+	msgCh   chan<- *raftpb.Message
 	stateCh chan<- Instruction
 	role    Role
 
@@ -87,7 +80,7 @@ func NewNode(
 	peers sets.Set[NodeID],
 	log *Log,
 	state State,
-	msgCh chan<- *Message,
+	msgCh chan<- *raftpb.Message,
 ) (*Node, error) {
 	stateCh := make(chan Instruction, 1)
 	driver := NewDriver(id, stateCh, msgCh)
@@ -122,7 +115,7 @@ func (n *Node) Role() Role {
 	return n.role
 }
 
-func (n *Node) Step(m *Message) error {
+func (n *Node) Step(m *raftpb.Message) error {
 	// Drop messages from past terms.
 	if m.Term < n.term && m.Term > 0 {
 		return nil
@@ -149,16 +142,15 @@ func (n *Node) Step(m *Message) error {
 	}
 }
 
-func (n *Node) stepFollower(m *Message) error {
-	assert.True(m.Client || m.Term == n.term)
+func (n *Node) stepFollower(m *raftpb.Message) error {
+	assert.True(m.Term == 0 || m.Term == n.term)
 
 	// Record when we last saw a message from the leader (if any).
-	if n.isLeader(m.From) {
+	if n.leader != 0 && n.leader == m.From {
 		n.leaderSeen = 0
 	}
 
-	switch e := m.Event.(type) {
-	case *Heartbeat:
+	if event := m.GetHeartbeat(); event != nil {
 		if n.leader == 0 {
 			if err := n.becomeFollower(m.From, m.Term); err != nil {
 				return err
@@ -168,31 +160,31 @@ func (n *Node) stepFollower(m *Message) error {
 		}
 
 		// Advance commit index and apply entries if possible.
-		hasCommitted, err := n.log.Has(e.CommitIndex, e.CommitTerm)
+		hasCommitted, err := n.log.Has(event.CommitIndex, event.CommitTerm)
 		if err != nil {
 			return err
 		}
 		oldCommitIndex, _ := n.log.CommitIndex()
-		if hasCommitted && e.CommitIndex > oldCommitIndex {
-			if err := n.log.Commit(e.CommitIndex); err != nil {
+		if hasCommitted && event.CommitIndex > oldCommitIndex {
+			if err := n.log.Commit(event.CommitIndex); err != nil {
 				return err
 			}
-			it, err := n.log.Scan(oldCommitIndex+1, e.CommitIndex+1)
+			it, err := n.log.Scan(oldCommitIndex+1, event.CommitIndex+1)
 			if err != nil {
 				return err
 			}
-			if err := itertools.Walk(it, func(entry *Entry) error {
+			if err := itertools.Walk(it, func(entry *raftpb.Entry) error {
 				n.stateCh <- &ApplyInstruction{Entry: entry}
 				return nil
 			}); err != nil {
 				return err
 			}
 		}
-		return n.send(m.From, &ConfirmLeader{
-			CommitIndex:  e.CommitIndex,
+		return n.send(m.From, &raftpb.ConfirmLeader{
+			CommitIndex:  event.CommitIndex,
 			HasCommitted: hasCommitted,
 		})
-	case *AppendEntries:
+	} else if event := m.GetAppendEntries(); event != nil {
 		if n.leader == 0 {
 			if err := n.becomeFollower(m.From, m.Term); err != nil {
 				return err
@@ -200,110 +192,109 @@ func (n *Node) stepFollower(m *Message) error {
 		} else if n.leader != m.From {
 			return fmt.Errorf("received heartbeat from unexpected leader %d", m.From)
 		}
-		// Append the entries, if possible.
-		if e.BaseIndex > 0 {
-			hasBase, err := n.log.Has(e.BaseIndex, e.BaseTerm)
-			if err != nil {
-				return err
-			}
-			if !hasBase {
-				return n.send(m.From, &RejectEntries{})
+		if len(event.Entries) > 0 {
+			base := event.Entries[0].Index - 1
+			if base > 0 {
+				hasBase, err := n.log.Has(base, event.Entries[0].Term)
+				if err != nil {
+					return err
+				}
+				if !hasBase {
+					return n.send(m.From, &raftpb.RejectEntries{})
+				}
 			}
 		}
-		lastIndex, err := n.log.Splice(e.Entries)
+		lastIndex, err := n.log.Splice(event.Entries)
 		if err != nil {
 			return err
 		}
-		return n.send(m.From, &AcceptEntries{
+		return n.send(m.From, &raftpb.AcceptEntries{
 			LastIndex: lastIndex,
 		})
-	case *SolicitVote:
+	} else if event := m.GetSolicitVote(); event != nil {
 		// If we already voted for someone else, ignore it.
 		if n.votedFor != 0 && n.votedFor != m.From {
 			return nil
 		}
 		// Only vote if the candidate's log is at least as up-to-date as ours.
 		logIndex, logTerm := n.log.LastIndex()
-		if e.LastTerm > logTerm || e.LastTerm == logTerm && e.LastIndex >= logIndex {
+		if event.LastTerm > logTerm || event.LastTerm == logTerm && event.LastIndex >= logIndex {
 			if err := n.log.SetTerm(n.term, m.From); err != nil {
 				return err
 			}
 			n.votedFor = m.From
-			return n.send(m.From, &GrantVote{})
+			return n.send(m.From, &raftpb.GrantVote{})
 		}
 		return nil
-	case *GrantVote:
+	} else if event := m.GetGrantVote(); event != nil {
 		// We may receive a vote after we lost the election and followed
 		// a different leader. Ignore it.
 		return nil
-	case *ClientRequest:
-		assert.True(m.Client, "client request from non-client")
+	} else if event := m.GetClientRequest(); event != nil {
+		assert.True(m.From != 0, "client request from non-client")
 		if n.leader != 0 {
-			n.forwarded.Add(e.ID)
-			return n.send(m.From, m.Event)
+			n.forwarded.Add(event.Id)
+			return n.send(m.From, event)
 		} else {
-			return n.sendToClient(&ClientResponse{
-				ID:  e.ID,
-				Err: ErrAbort,
+			return n.sendToClient(&raftpb.ClientResponse{
+				Id:    event.Id,
+				Error: requestAborted,
 			})
 		}
-	case *ClientResponse:
+	} else if event := m.GetClientResponse(); event != nil {
 		assert.True(n.isLeader(m.From), "client response from non-leader")
-		if n.forwarded.Contains(e.ID) {
-			n.forwarded.Remove(e.ID)
-			return n.sendToClient(m.Event)
+		if n.forwarded.Contains(event.Id) {
+			n.forwarded.Remove(event.Id)
+			return n.sendToClient(event)
 		}
 		return nil
-	default:
-		return fmt.Errorf("received unexpected event %T", e)
+	} else {
+		return fmt.Errorf("received unexpected event %T", m.GetEvent())
 	}
 }
 
-func (n *Node) stepCadidate(m *Message) error {
-	assert.True(m.Client || m.Term == n.term)
+func (n *Node) stepCadidate(m *raftpb.Message) error {
+	assert.True(m.Term == 0 || m.Term == n.term)
 
-	_, isHeartbeat := m.Event.(*Heartbeat)
-	_, isAppendEntries := m.Event.(*AppendEntries)
 	// If we receive a heartbeat or append entries in this term, we lost the
 	// election and have a new leader. Follow the leader and step the message.
-	if isHeartbeat || isAppendEntries {
+	if m.GetHeartbeat() != nil || m.GetAppendEntries() != nil {
 		if err := n.becomeFollower(m.From, m.Term); err != nil {
 			return err
 		}
 		return n.stepFollower(m)
 	}
 
-	switch e := m.Event.(type) {
-	case *SolicitVote:
+	if event := m.GetSolicitVote(); event != nil {
 		// Ignore other candidates' solicitations.
 		return nil
-	case *GrantVote:
+	} else if event := m.GetGrantVote(); event != nil {
 		n.votesReceived.Add(m.From)
 		if n.votesReceived.Size() >= n.quorum() {
 			return n.becomeLeader()
 		}
 		return nil
-	case *ClientRequest:
-		assert.True(m.Client, "client request from non-client")
+	} else if event := m.GetClientRequest(); event != nil {
+		assert.True(m.Term == 0, "client request from non-client")
 		// Abort any inbound requests when campaigning.
-		return n.sendToClient(&ClientResponse{
-			ID:  e.ID,
-			Err: ErrAbort,
+		return n.sendToClient(&raftpb.ClientResponse{
+			Id:    event.Id,
+			Type:  event.Type,
+			Error: requestAborted,
 		})
-	default:
-		return fmt.Errorf("received unexpected event %T", e)
+	} else {
+		return fmt.Errorf("received unexpected event %T", m.GetEvent())
 	}
 }
 
-func (n *Node) stepLeader(m *Message) error {
-	assert.True(m.Client || m.Term == n.term)
+func (n *Node) stepLeader(m *raftpb.Message) error {
+	assert.True(m.Term == 0 || m.Term == n.term)
 
-	switch event := m.Event.(type) {
-	case *Heartbeat:
+	if event := m.GetHeartbeat(); event != nil {
 		return fmt.Errorf("saw other leader %d in term %d", m.From, m.Term)
-	case *AppendEntries:
+	} else if event := m.GetAppendEntries(); event != nil {
 		return fmt.Errorf("saw other leader %d in term %d", m.From, m.Term)
-	case *ConfirmLeader:
+	} else if event := m.GetConfirmLeader(); event != nil {
 		// A follower received one of our heartbeats and confirmed that we
 		// are its leader. If it doesn't have the commit index in its local
 		// log, replicate the log to it.
@@ -316,7 +307,7 @@ func (n *Node) stepLeader(m *Message) error {
 			return n.sendLog(m.From)
 		}
 		return nil
-	case *AcceptEntries:
+	} else if event := m.GetAcceptEntries(); event != nil {
 		// A follower appended log entries we sent it. Record its progress
 		// and attempt to commit new entries.
 		lastIndex, _ := n.log.LastIndex()
@@ -328,7 +319,7 @@ func (n *Node) stepLeader(m *Message) error {
 			return n.maybeCommit()
 		}
 		return nil
-	case *RejectEntries:
+	} else if event := m.GetRejectEntries(); event != nil {
 		// A follower rejected log entries we sent it, typically because it
 		// does not have the base index in its log. Try to replicate from
 		// the previous entry.
@@ -337,12 +328,12 @@ func (n *Node) stepLeader(m *Message) error {
 		// be very slow with long divergent logs, but we keep it simple.
 		n.progress[m.From].next--
 		return n.sendLog(m.From)
-	case *ClientRequest:
+	} else if event := m.GetClientRequest(); event != nil {
 		switch event.Type {
-		case RequestQuery:
+		case raftpb.ClientRequest_QUERY:
 			commitIndex, _ := n.log.CommitIndex()
 			n.stateCh <- &QueryInstruction{
-				ID:      event.ID,
+				ID:      event.Id,
 				NodeID:  m.From,
 				Command: event.Command,
 				Term:    n.term,
@@ -355,13 +346,13 @@ func (n *Node) stepLeader(m *Message) error {
 				NodeID: n.id,
 			}
 			return n.heartbeat()
-		case RequestMutate:
+		case raftpb.ClientRequest_MUTATE:
 			index, err := n.propose(event.Command)
 			if err != nil {
 				return err
 			}
 			n.stateCh <- &NotifyInstruction{
-				ID:     event.ID,
+				ID:     event.Id,
 				NodeID: m.From,
 				Index:  index,
 			}
@@ -369,7 +360,7 @@ func (n *Node) stepLeader(m *Message) error {
 				return n.maybeCommit()
 			}
 			return nil
-		case RequestStatus:
+		case raftpb.ClientRequest_STATUS:
 			engineStatus, err := n.log.Status()
 			if err != nil {
 				return err
@@ -380,7 +371,7 @@ func (n *Node) stepLeader(m *Message) error {
 			}
 			nodeLastIndex[n.id], _ = n.log.LastIndex()
 			commitIndex, _ := n.log.CommitIndex()
-			status := &Status{
+			status := &raftpb.Status{
 				Server:        n.id,
 				Leader:        n.id,
 				Term:          n.term,
@@ -390,7 +381,7 @@ func (n *Node) stepLeader(m *Message) error {
 				StorageSize:   engineStatus.Size,
 			}
 			n.stateCh <- &StatusInstruction{
-				ID:     event.ID,
+				ID:     event.Id,
 				NodeID: m.From,
 				Status: status,
 			}
@@ -398,13 +389,13 @@ func (n *Node) stepLeader(m *Message) error {
 		default:
 			return fmt.Errorf("unknown request type %d", event.Type)
 		}
-	case *SolicitVote:
+	} else if event := m.GetSolicitVote(); event != nil {
 		// Ignore it since we won the election.
 		return nil
-	case *GrantVote:
+	} else if event := m.GetGrantVote(); event != nil {
 		// Ignore it since we won the election.
 		return nil
-	default:
+	} else {
 		return fmt.Errorf("received unexpected event %T", event)
 	}
 }
@@ -511,7 +502,7 @@ func (n *Node) campaign() error {
 	}
 	lastIndex, lastTerm := n.log.LastIndex()
 	for _, peer := range n.peers.Values() {
-		if err := n.send(peer, &SolicitVote{
+		if err := n.send(peer, &raftpb.SolicitVote{
 			LastIndex: lastIndex,
 			LastTerm:  lastTerm,
 		}); err != nil {
@@ -525,7 +516,7 @@ func (n *Node) heartbeat() error {
 	commitIndex, commitTerm := n.log.CommitIndex()
 	n.peers.Add()
 	for _, peer := range n.peers.Values() {
-		if err := n.send(peer, &Heartbeat{
+		if err := n.send(peer, &raftpb.Heartbeat{
 			CommitIndex: commitIndex,
 			CommitTerm:  commitTerm,
 		}); err != nil {
@@ -592,7 +583,7 @@ func (n *Node) maybeCommit() error {
 		if err != nil {
 			return err
 		}
-		if err := itertools.Walk(it, func(entry *Entry) error {
+		if err := itertools.Walk(it, func(entry *raftpb.Entry) error {
 			n.stateCh <- &ApplyInstruction{Entry: entry}
 			return nil
 		}); err != nil {
@@ -604,9 +595,9 @@ func (n *Node) maybeCommit() error {
 
 func (n *Node) abortForwarded() error {
 	for _, id := range n.forwarded.Values() {
-		if err := n.sendToClient(&ClientResponse{
-			ID:  id,
-			Err: ErrAbort,
+		if err := n.sendToClient(&raftpb.ClientResponse{
+			Id:    id,
+			Error: requestAborted,
 		}); err != nil {
 			return err
 		}
@@ -615,47 +606,33 @@ func (n *Node) abortForwarded() error {
 	return nil
 }
 
-func (n *Node) send(to NodeID, event Event) error {
-	n.msgCh <- &Message{
+func (n *Node) send(to NodeID, event raftpb.Eventer) error {
+	n.msgCh <- &raftpb.Message{
 		Term:  n.term,
 		From:  n.id,
 		To:    to,
-		Event: event,
+		Event: event.Event(),
 	}
 	return nil
 }
 
-func (n *Node) sendToClient(event Event) error {
-	n.msgCh <- &Message{
-		Term:   n.term,
-		Client: true,
-		Event:  event,
+func (n *Node) sendToClient(resp *raftpb.ClientResponse) error {
+	n.msgCh <- &raftpb.Message{
+		Term:  n.term,
+		From:  n.id,
+		To:    0,
+		Event: resp.Event(),
 	}
 	return nil
 }
 
 func (n *Node) sendLog(peer NodeID) error {
-	var (
-		baseIndex Index
-		baseTerm  Term
-	)
 	progress, ok := n.progress[peer]
 	if !ok {
 		return fmt.Errorf("unknown peer %d", peer)
 	}
-	if progress.next > 1 {
-		entry, err := n.log.Get(progress.next - 1)
-		if err != nil {
-			if err == storage.ErrNotFound {
-				return fmt.Errorf("missing entry at index %d", progress.next-1)
-			}
-			return err
-		}
-		baseIndex = progress.next - 1
-		baseTerm = entry.Term
-	}
 
-	it, err := n.log.Scan(baseIndex+1, math.MaxUint64)
+	it, err := n.log.Scan(progress.next, math.MaxUint64)
 	if err != nil {
 		return err
 	}
@@ -663,9 +640,7 @@ func (n *Node) sendLog(peer NodeID) error {
 	if err != nil {
 		return err
 	}
-	return n.send(peer, &AppendEntries{
-		BaseIndex: baseIndex,
-		BaseTerm:  baseTerm,
-		Entries:   entries,
+	return n.send(peer, &raftpb.AppendEntries{
+		Entries: entries,
 	})
 }

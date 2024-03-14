@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+option go_package = "github.com/sleepymole/go-toydb/raft/raftpb";
+
+// Message is passed between Raft nodes.
+message Message {
+  // Term is the current term of the sender.
+  //
+  // Must be set, unless the message is sent to or received
+  // from a local client, in which case event must be either
+  // ClientRequest or ClientResponse.
+  uint64 term = 1;
+  // From is the sender's id.
+  //
+  // 0 means the message is from a local client.
+  uint64 from = 2;
+  // To is the recipient's id.
+  //
+  // 0 means the message is to a local client.
+  uint64 to = 3;
+  // Event is the event contained within the message.
+  oneof event {
+    Heartbeat heartbeat = 4;
+    ConfirmLeader confirm_leader = 5;
+    SolicitVote solicit_vote = 6;
+    GrantVote grant_vote = 7;
+    AppendEntries append_entries = 8;
+    AcceptEntries accept_entries = 9;
+    RejectEntries reject_entries = 10;
+    ClientRequest client_request = 11;
+    ClientResponse client_response = 12;
+  }
+}
+
+// Heartbeat is sent by the leader to the followers to
+// maintain the leader's authority.
+message Heartbeat {
+  // CommitIndex is the index of the leader's last committed log entry.
+  uint64 commit_index = 1;
+  // CommitTerm is the term of the leader's last committed log entry.
+  uint64 commit_term = 2;
+}
+
+// ConfirmLeader is sent by the follower to the leader to confirm
+// the leader's authority after receiving a heartbeat.
+message ConfirmLeader {
+  // CommitIndex is the original commit index of the leader's heartbeat.
+  // This is used to confirm read requests.
+  uint64 commit_index = 1;
+  // HasCommitted is true if the follower has committed the leader's
+  // last committed log entry. If false, the leader will send the
+  // follower the missing log entries.
+  bool has_committed = 2;
+}
+
+// SolicitVote is sent by a candidate to its peers to solicit votes.
+message SolicitVote {
+  // LastIndex is the index of the candidate's last log entry.
+  uint64 last_index = 1;
+  // LastTerm is the term of the candidate's last log entry.
+  uint64 last_term = 2;
+}
+
+// GrantVote is sent by a follower to a candidate to grant it a vote,
+// on a first-come basis. Candidates implicitly vote for themselves.
+message GrantVote {}
+
+// AppendEntries is sent by the leader to the followers to replicate
+// log entries.
+message AppendEntries {
+  // Entries is the list of log entries to append.
+  repeated Entry entries = 3;
+}
+
+// AcceptEntries is sent by a follower to the leader to tell it that
+// it has accepted the leader's AppendEntries request.
+message AcceptEntries {
+  // LastIndex is the index of the last log entry.
+  uint64 last_index = 1;
+}
+
+// RejectEntries is sent by a follower to the leader to reject its
+// AppendEntries request. The leader will decrement its next index
+// for the follower and retry.
+message RejectEntries {}
+
+// ClientRequest is client's request to the Raft cluster. This can be
+// submitted to the leader, or to a follower, which will forward it to
+// its leader. If there is no leader or term changes, the request will
+// be aborted.
+message ClientRequest {
+  enum Type {
+    QUERY = 0;
+    MUTATE = 1;
+    STATUS = 2;
+  }
+
+  // Id is the globally unique identifier of the request.
+  bytes id = 1;
+  // Type is the type of the request.
+  Type type = 2;
+  // Command is the command to be executed (For QUERY and MUTATE).
+  bytes command = 3;
+}
+
+// ClientResponse is the response to a ClientRequest.
+message ClientResponse {
+  // Id is the response id. This matches the id of ClientRequest.
+  bytes id = 1;
+  // Type is the response type. This matches the type of ClientRequest.
+  ClientRequest.Type type = 2;
+  // Result is the result of executing the command.
+  bytes result = 3;
+  // Status is the status of the STATUS request.
+  Status status = 4;
+  // Error is the error message if the request failed.
+  string error = 5;
+}
+
+// Entry is a log entry in the Raft log.
+message Entry {
+  uint64 index = 1;
+  uint64 term = 2;
+  bytes command = 3;
+}
+
+// Status is the status of a Raft node.
+message Status {
+  uint64 server = 1;
+  uint64 leader = 2;
+  uint64 term = 3;
+  map<uint64, uint64> node_last_index = 4;
+  uint64 commit_index = 5;
+  uint64 apply_index = 6;
+  string storage = 7;
+  int64 storage_size = 8;
+}
