@@ -1,14 +1,19 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 option go_package = "github.com/sleepymole/go-toydb/raft/raftpb";
+
+service Raft {
+  rpc SendMessages(stream Message) returns (google.protobuf.Empty) {}
+}
 
 // Message is passed between Raft nodes.
 message Message {
   // Term is the current term of the sender.
   //
-  // Must be set, unless the message is sent to or received
-  // from a local client, in which case event must be either
-  // ClientRequest or ClientResponse.
+  // Must be set, unless the message is sent to or received from a local client,
+  // in which case event must be either ClientRequest or ClientResponse.
   uint64 term = 1;
   // From is the sender's id.
   //
@@ -47,9 +52,9 @@ message ConfirmLeader {
   // CommitIndex is the original commit index of the leader's heartbeat.
   // This is used to confirm read requests.
   uint64 commit_index = 1;
-  // HasCommitted is true if the follower has committed the leader's
-  // last committed log entry. If false, the leader will send the
-  // follower the missing log entries.
+  // HasCommitted is true if the follower has committed the leader's last
+  // committed log entry. If false, the leader will send the follower the
+  // missing log entries.
   bool has_committed = 2;
 }
 
@@ -61,8 +66,8 @@ message SolicitVote {
   uint64 last_term = 2;
 }
 
-// GrantVote is sent by a follower to a candidate to grant it a vote,
-// on a first-come basis. Candidates implicitly vote for themselves.
+// GrantVote is sent by a follower to a candidate to grant it a vote, on a
+// first-come basis. Candidates implicitly vote for themselves.
 message GrantVote {}
 
 // AppendEntries is sent by the leader to the followers to replicate
@@ -72,22 +77,20 @@ message AppendEntries {
   repeated Entry entries = 3;
 }
 
-// AcceptEntries is sent by a follower to the leader to tell it that
-// it has accepted the leader's AppendEntries request.
+// AcceptEntries is sent by a follower to the leader to tell it that it has
+// accepted the leader's AppendEntries request.
 message AcceptEntries {
   // LastIndex is the index of the last log entry.
   uint64 last_index = 1;
 }
 
-// RejectEntries is sent by a follower to the leader to reject its
-// AppendEntries request. The leader will decrement its next index
-// for the follower and retry.
+// RejectEntries is sent by a follower to the leader to reject its AppendEntries
+// request. The leader will decrement its next index for the follower and retry.
 message RejectEntries {}
 
-// ClientRequest is client's request to the Raft cluster. This can be
-// submitted to the leader, or to a follower, which will forward it to
-// its leader. If there is no leader or term changes, the request will
-// be aborted.
+// ClientRequest is client's request to the Raft cluster. This can be submitted
+// to the leader, or to a follower, which will forward it to  its leader. If there
+// is no leader or term changes, the request will be aborted.
 message ClientRequest {
   enum Type {
     QUERY = 0;

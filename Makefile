@@ -9,3 +9,8 @@ tidy:
 generate:
 	@buf generate
 .PHONY: generate
+
+fmt:
+	@go fmt ./...
+	@buf format -w
+.PHONY: fmt

@@ -1,7 +1,7 @@
 package raft
 
 import (
-	"encoding/gob"
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +13,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/util/assert"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const tickInterval = time.Millisecond * 100
@@ -23,92 +26,146 @@ func genertateRequestID() RequestID {
 }
 
 type Server struct {
-	node      *Node
-	peers     map[NodeID]string
-	peerConns map[NodeID]net.Conn
-	msgInCh   chan *raftpb.Message
-	msgOutCh  chan *raftpb.Message
-	clientCh  chan lo.Tuple2[*raftpb.ClientRequest, chan *raftpb.ClientResponse]
+	raftpb.UnimplementedRaftServer
+
+	node       *Node
+	msgInCh    chan *raftpb.Message
+	msgOutCh   chan *raftpb.Message
+	clientCh   chan lo.Tuple2[*raftpb.ClientRequest, chan *raftpb.ClientResponse]
+	peerConns  map[NodeID]*grpc.ClientConn
+	msgClients map[NodeID]raftpb.Raft_SendMessagesClient
 }
 
 func NewServer(id NodeID, peers map[NodeID]string, log *Log, state State) (*Server, error) {
 	msgOutCh := make(chan *raftpb.Message, 1024)
-	peerSet := hashset.New[NodeID]()
+	peerIDs := hashset.New[NodeID]()
+	peerConns := make(map[NodeID]*grpc.ClientConn)
+
+	var allIsWell bool
+	defer func() {
+		if !allIsWell {
+			for _, conn := range peerConns {
+				_ = conn.Close()
+			}
+		}
+	}()
+
 	for id := range peers {
-		peerSet.Add(id)
+		peerIDs.Add(id)
+		conn, err := grpc.Dial(peers[id], grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to dial peer %d: %v", id, err)
+		}
+		peerConns[id] = conn
 	}
-	node, err := NewNode(id, peerSet, log, state, msgOutCh)
+	node, err := NewNode(id, peerIDs, log, state, msgOutCh)
 	if err != nil {
 		return nil, err
 	}
 	msgInCh := make(chan *raftpb.Message, 1024)
 	clientCh := make(chan lo.Tuple2[*raftpb.ClientRequest, chan *raftpb.ClientResponse], 1024)
+
+	allIsWell = true
 	return &Server{
-		node:     node,
-		peers:    peers,
-		msgInCh:  msgInCh,
-		msgOutCh: msgOutCh,
-		clientCh: clientCh,
+		node:       node,
+		msgInCh:    msgInCh,
+		msgOutCh:   msgOutCh,
+		clientCh:   clientCh,
+		peerConns:  peerConns,
+		msgClients: make(map[NodeID]raftpb.Raft_SendMessagesClient),
 	}, nil
 }
 
 func (s *Server) Serve(l net.Listener) error {
-	go s.eventLoop()
+	grpcServer := grpc.NewServer()
+	raftpb.RegisterRaftServer(grpcServer, s)
+	g, ctx := errgroup.WithContext(context.Background())
+	g.Go(func() error {
+		<-ctx.Done()
+		grpcServer.Stop()
+		return nil
+	})
+	g.Go(func() error {
+		return s.eventLoop(ctx)
+	})
+	return g.Wait()
+}
 
+func (s *Server) Messages(stream raftpb.Raft_SendMessagesServer) error {
+	ctx := stream.Context()
 	for {
-		conn, err := l.Accept()
+		msg, err := stream.Recv()
 		if err != nil {
 			return err
 		}
-		go s.receiveLoop(conn)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case s.msgInCh <- msg:
+		}
 	}
 }
 
-func (s *Server) Mutate(command []byte) ([]byte, error) {
+func (s *Server) Mutate(ctx context.Context, command []byte) ([]byte, error) {
 	req := &raftpb.ClientRequest{
 		Id:      genertateRequestID(),
 		Type:    raftpb.ClientRequest_MUTATE,
 		Command: command,
 	}
-	respCh := make(chan *raftpb.ClientResponse, 1)
-	s.clientCh <- lo.T2(req, respCh)
-	resp := <-respCh
-	if resp.Error != "" {
-		return resp.Result, errors.New(resp.Error)
+	resp, err := s.clientRequest(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 	return resp.Result, nil
 }
 
-func (s *Server) Query(command []byte) ([]byte, error) {
+func (s *Server) Query(ctx context.Context, command []byte) ([]byte, error) {
 	req := &raftpb.ClientRequest{
 		Id:      genertateRequestID(),
 		Type:    raftpb.ClientRequest_QUERY,
 		Command: command,
 	}
-	respCh := make(chan *raftpb.ClientResponse, 1)
-	s.clientCh <- lo.T2(req, respCh)
-	resp := <-respCh
-	if resp.Error != "" {
-		return resp.Result, errors.New(resp.Error)
+	resp, err := s.clientRequest(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 	return resp.Result, nil
 }
 
-func (s *Server) Status() (*raftpb.Status, error) {
+func (s *Server) Status(ctx context.Context) (*raftpb.Status, error) {
 	req := &raftpb.ClientRequest{
 		Id:   genertateRequestID(),
 		Type: raftpb.ClientRequest_STATUS,
 	}
-	respCh := make(chan *raftpb.ClientResponse, 1)
-	s.clientCh <- lo.T2(req, respCh)
-	resp := <-respCh
-	if resp.Error != "" {
-		return resp.Status, errors.New(resp.Error)
+	resp, err := s.clientRequest(ctx, req)
+	if err != nil {
+		return nil, err
 	}
 	return resp.Status, nil
 }
 
-func (s *Server) eventLoop() error {
+func (s *Server) clientRequest(ctx context.Context, req *raftpb.ClientRequest) (*raftpb.ClientResponse, error) {
+	respCh := make(chan *raftpb.ClientResponse, 1)
+	defer close(respCh)
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.clientCh <- lo.T2(req, respCh):
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case resp := <-respCh:
+		if resp.Error != "" {
+			return nil, errors.New(resp.Error)
+		}
+		return resp, nil
+	}
+}
+
+func (s *Server) eventLoop(ctx context.Context) error {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 
@@ -116,6 +173,8 @@ func (s *Server) eventLoop() error {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-ticker.C:
 			if err := s.node.Tick(); err != nil {
 				return err
@@ -142,7 +201,9 @@ func (s *Server) eventLoop() error {
 				continue
 			}
 			assert.True(msg.To != 0, "non-client message must have a destination")
-			s.send(msg.To, msg)
+			if err := s.sendMsg(msg.To, msg); err != nil {
+				slog.Error("failed to send message", slog.Uint64("to", uint64(msg.To)), slog.Any("error", err))
+			}
 		case tuple, ok := <-s.clientCh:
 			if !ok {
 				return nil
@@ -161,50 +222,32 @@ func (s *Server) eventLoop() error {
 	}
 }
 
-func (s *Server) send(to NodeID, msg *raftpb.Message) {
-	conn, err := s.getConn(to)
+func (s *Server) sendMsg(to NodeID, msg *raftpb.Message) error {
+	client, err := s.getMsgClient(to)
 	if err != nil {
-		slog.Error("failed to get connection to peer %d: %v", to, err)
-		return
+		return err
 	}
-
-	// TODO: Use gRPC instead of sending gob-encoded messages over TCP.
-	encoder := gob.NewEncoder(conn)
-	if err := encoder.Encode(msg); err != nil {
-		_ = conn.Close()
-		slog.Error("failed to encode message: %v", err)
-		return
+	if err := client.Send(msg); err != nil {
+		_ = client.CloseSend()
+		delete(s.msgClients, to)
+		return err
 	}
-	s.returnConn(to, conn)
+	return nil
 }
 
-func (s *Server) getConn(id NodeID) (net.Conn, error) {
-	conn, ok := s.peerConns[id]
+func (s *Server) getMsgClient(peer NodeID) (raftpb.Raft_SendMessagesClient, error) {
+	client, ok := s.msgClients[peer]
 	if ok {
-		return conn, nil
+		return client, nil
 	}
-	addr, ok := s.peers[id]
+	conn, ok := s.peerConns[peer]
 	if !ok {
-		return nil, fmt.Errorf("address of node %d not found", id)
+		return nil, fmt.Errorf("no connection to peer %d", peer)
 	}
-	return net.Dial("tcp", addr)
-}
-
-func (s *Server) returnConn(id NodeID, conn net.Conn) {
-	s.peerConns[id] = conn
-}
-
-func (s *Server) receiveLoop(conn net.Conn) {
-	defer conn.Close()
-
-	// TODO: Use gRPC instead of sending gob-encoded messages over TCP.
-	decoder := gob.NewDecoder(conn)
-	for {
-		var msg raftpb.Message
-		if err := decoder.Decode(&msg); err != nil {
-			slog.Error("failed to decode message: %v", err)
-			return
-		}
-		s.msgInCh <- &msg
+	client, err := raftpb.NewRaftClient(conn).SendMessages(context.TODO())
+	if err != nil {
+		return nil, err
 	}
+	s.msgClients[peer] = client
+	return client, nil
 }
