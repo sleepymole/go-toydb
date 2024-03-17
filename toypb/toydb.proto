@@ -1,4 +1,5 @@
 syntax = "proto3";
+package toydb.toypb;
 
 import "raft/raftpb/raft.proto";
 

@@ -36,7 +36,7 @@ func NewToyDBClient(cc grpc.ClientConnInterface) ToyDBClient {
 
 func (c *toyDBClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error) {
 	out := new(ExecuteResponse)
-	err := c.cc.Invoke(ctx, "/ToyDB/Execute", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/toydb.toypb.ToyDB/Execute", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (c *toyDBClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...g
 
 func (c *toyDBClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
-	err := c.cc.Invoke(ctx, "/ToyDB/Status", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/toydb.toypb.ToyDB/Status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func _ToyDB_Execute_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ToyDB/Execute",
+		FullMethod: "/toydb.toypb.ToyDB/Execute",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ToyDBServer).Execute(ctx, req.(*ExecuteRequest))
@@ -112,7 +112,7 @@ func _ToyDB_Status_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ToyDB/Status",
+		FullMethod: "/toydb.toypb.ToyDB/Status",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ToyDBServer).Status(ctx, req.(*StatusRequest))
@@ -124,7 +124,7 @@ func _ToyDB_Status_Handler(srv interface{}, ctx context.Context, dec func(interf
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ToyDB_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ToyDB",
+	ServiceName: "toydb.toypb.ToyDB",
 	HandlerType: (*ToyDBServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
