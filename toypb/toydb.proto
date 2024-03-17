@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+import "raft/raftpb/raft.proto";
+
+option go_package = "github.com/sleepymole/go-toydb/toypb";
+
+service ToyDB {
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+}
+
+message ExecuteRequest {
+  string query = 1;
+}
+
+message ExecuteResponse {
+  oneof result {
+    MutateResult mutate_result = 1;
+    QueryResult query_result = 2;
+    string error = 3;
+  }
+}
+
+message MutateResult {
+  int64 last_insert_id = 1;
+  int64 rows_affected = 2;
+}
+
+message QueryResult {
+  repeated string columns = 1;
+  repeated Row rows = 2;
+}
+
+message Row {
+  repeated Value values = 1;
+}
+
+message Value {
+  oneof union {
+    bool b = 1;
+    int64 i = 2;
+    double f = 3;
+    string s = 4;
+  }
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  raftpb.Status raft = 1;
+  string mvcc = 2; // TODO: Use concrete type
+}

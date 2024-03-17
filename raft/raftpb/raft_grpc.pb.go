@@ -35,7 +35,7 @@ func NewRaftClient(cc grpc.ClientConnInterface) RaftClient {
 }
 
 func (c *raftClient) SendMessages(ctx context.Context, opts ...grpc.CallOption) (Raft_SendMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Raft_ServiceDesc.Streams[0], "/Raft/SendMessages", opts...)
+	stream, err := c.cc.NewStream(ctx, &Raft_ServiceDesc.Streams[0], "/raftpb.Raft/SendMessages", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (x *raftSendMessagesServer) Recv() (*Message, error) {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Raft_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Raft",
+	ServiceName: "raftpb.Raft",
 	HandlerType: (*RaftServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
