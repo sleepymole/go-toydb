@@ -1,8 +1,8 @@
 package execution
 
 import (
+	"github.com/sleepymole/go-toydb/sql/ast"
 	"github.com/sleepymole/go-toydb/sql/plan"
-	"github.com/sleepymole/go-toydb/sql/types"
 )
 
 type Executor interface {
@@ -30,13 +30,13 @@ const (
 
 type ResultSet struct {
 	Type     ResultSetType
-	Version  uint64     // For BEGIN, COMMIT, and ROLLBACK
-	ReadOnly bool       // For BEGIN
-	Count    int64      // For CREATE, DELETE, INSERT, and UPDATE
-	Table    string     // For CREATE TABLE, DROP TABLE
-	Columns  []string   // For QUERY
-	Rows     types.Rows // For QUERY
-	Node     plan.Node  // For EXPLAIN
+	Version  uint64    // For BEGIN, COMMIT, and ROLLBACK
+	ReadOnly bool      // For BEGIN
+	Count    int64     // For CREATE, DELETE, INSERT, and UPDATE
+	Table    string    // For CREATE TABLE, DROP TABLE
+	Columns  []string  // For QUERY
+	Rows     ast.Rows  // For QUERY
+	Node     plan.Node // For EXPLAIN
 }
 
 func MakeBeginResultSet(version uint64, readOnly bool) *ResultSet {
@@ -71,7 +71,7 @@ func MakeDropTableResultSet(table string) *ResultSet {
 	return &ResultSet{Type: ResultSetDropTable, Table: table}
 }
 
-func MakeQueryResultSet(columns []string, rows types.Rows) *ResultSet {
+func MakeQueryResultSet(columns []string, rows ast.Rows) *ResultSet {
 	return &ResultSet{Type: ResultSetQuery, Columns: columns, Rows: rows}
 }
 
