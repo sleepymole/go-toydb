@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sleepymole/go-toydb/raft/raftpb"
+	"github.com/sleepymole/go-toydb/api/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"

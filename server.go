@@ -3,21 +3,21 @@ package toydb
 import (
 	"context"
 
-	"github.com/sleepymole/go-toydb/toypb"
+	"github.com/sleepymole/go-toydb/api/dbpb"
 )
 
 type Server struct {
-	toypb.UnimplementedToyDBServer
+	dbpb.UnimplementedDBServer
 }
 
 func (s *Server) Serve() error {
 	panic("implement me")
 }
 
-func (s *Server) Execute(ctx context.Context, req *toypb.ExecuteRequest) (*toypb.ExecuteResponse, error) {
+func (s *Server) Execute(ctx context.Context, req *dbpb.ExecuteRequest) (*dbpb.ExecuteResponse, error) {
 	panic("implement me")
 }
 
-func (s *Server) Status(ctx context.Context, req *toypb.StatusRequest) (*toypb.StatusResponse, error) {
+func (s *Server) Status(ctx context.Context, req *dbpb.StatusRequest) (*dbpb.StatusResponse, error) {
 	panic("implement me")
 }

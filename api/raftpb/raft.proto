@@ -1,9 +1,9 @@
 syntax = "proto3";
-package toydb.raftpb;
+package raftpb;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/sleepymole/go-toydb/raft/raftpb";
+option go_package = "github.com/sleepymole/go-toydb/api/raftpb";
 
 service Raft {
   rpc SendMessages(stream Message) returns (google.protobuf.Empty) {}
