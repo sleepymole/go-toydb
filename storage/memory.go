@@ -17,7 +17,7 @@ type Memory struct {
 
 var _ Engine = &Memory{}
 
-func NewMemoryEngine() *Memory {
+func NewMemory() *Memory {
 	m := &Memory{
 		data: btree.NewG(2, func(a, b KeyValue) bool {
 			return bytes.Compare(a.Key, b.Key) < 0

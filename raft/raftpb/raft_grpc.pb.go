@@ -69,21 +69,19 @@ func (x *raftSendMessagesClient) CloseAndRecv() (*emptypb.Empty, error) {
 }
 
 // RaftServer is the server API for Raft service.
-// All implementations must embed UnimplementedRaftServer
+// All implementations should embed UnimplementedRaftServer
 // for forward compatibility
 type RaftServer interface {
 	SendMessages(Raft_SendMessagesServer) error
-	mustEmbedUnimplementedRaftServer()
 }
 
-// UnimplementedRaftServer must be embedded to have forward compatible implementations.
+// UnimplementedRaftServer should be embedded to have forward compatible implementations.
 type UnimplementedRaftServer struct {
 }
 
 func (UnimplementedRaftServer) SendMessages(Raft_SendMessagesServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendMessages not implemented")
 }
-func (UnimplementedRaftServer) mustEmbedUnimplementedRaftServer() {}
 
 // UnsafeRaftServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to RaftServer will

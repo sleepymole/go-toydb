@@ -20,6 +20,7 @@ require (
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/emirpasic/gods/v2 => github.com/sleepymole/gods/v2 v2.0.0-20240308045935-7c91a38e2a2e
