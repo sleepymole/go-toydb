@@ -10,7 +10,7 @@ import (
 
 	"github.com/emirpasic/gods/v2/sets"
 	"github.com/emirpasic/gods/v2/sets/treeset"
-	"github.com/sleepymole/go-toydb/api/raftpb"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
@@ -611,19 +611,17 @@ func (n *Node) send(to NodeID, event raftpb.Eventer) error {
 		Term:  n.term,
 		From:  n.id,
 		To:    to,
-		Event: event.GetEvent(),
+		Event: event.Event(),
 	}
 	return nil
 }
 
 func (n *Node) sendToClient(resp *raftpb.ClientResponse) error {
 	n.msgCh <- &raftpb.Message{
-		Term: n.term,
-		From: n.id,
-		To:   0,
-		Event: &raftpb.Message_ClientResponse{
-			ClientResponse: resp,
-		},
+		Term:  n.term,
+		From:  n.id,
+		To:    0,
+		Event: resp.Event(),
 	}
 	return nil
 }

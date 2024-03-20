@@ -7,10 +7,10 @@ tidy:
 .PHONY: tidy
 
 generate:
-	@cd api && buf generate
+	@buf generate
 .PHONY: generate
 
 fmt:
 	@go fmt ./...
-	@cd api && buf format -w
+	@buf format -w
 .PHONY: fmt

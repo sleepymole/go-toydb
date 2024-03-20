@@ -1,11 +1,11 @@
 syntax = "proto3";
-package dbpb;
+package toydb.toypb;
 
-import "raftpb/raft.proto";
+import "raft/raftpb/raft.proto";
 
-option go_package = "github.com/sleepymole/go-toydb/api/dbpb";
+option go_package = "github.com/sleepymole/go-toydb/toypb";
 
-service DB {
+service ToyDB {
   rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
   rpc Status(StatusRequest) returns (StatusResponse) {}
 }

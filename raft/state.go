@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/emirpasic/gods/v2/sets/hashset"
-	"github.com/sleepymole/go-toydb/api/raftpb"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/protoutil"

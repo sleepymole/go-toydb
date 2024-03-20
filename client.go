@@ -3,24 +3,24 @@ package toydb
 import (
 	"context"
 
-	"github.com/sleepymole/go-toydb/api/dbpb"
+	"github.com/sleepymole/go-toydb/toypb"
 )
 
 type Client struct {
 }
 
-func (c *Client) Execute(ctx context.Context, query string) (*dbpb.ExecuteResponse, error) {
+func (c *Client) Execute(ctx context.Context, query string) (*toypb.ExecuteResponse, error) {
 	panic("implement me")
 }
 
-func (c *Client) Mutate(ctx context.Context, query string) (*dbpb.MutateResult, error) {
+func (c *Client) Mutate(ctx context.Context, query string) (*toypb.MutateResult, error) {
 	panic("implement me")
 }
 
-func (c *Client) Query(ctx context.Context, query string) (*dbpb.QueryResult, error) {
+func (c *Client) Query(ctx context.Context, query string) (*toypb.QueryResult, error) {
 	panic("implement me")
 }
 
-func (c *Client) Status(ctx context.Context) (*dbpb.StatusResponse, error) {
+func (c *Client) Status(ctx context.Context) (*toypb.StatusResponse, error) {
 	panic("implement me")
 }

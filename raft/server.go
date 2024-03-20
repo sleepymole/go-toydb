@@ -11,7 +11,7 @@ import (
 	"github.com/emirpasic/gods/v2/sets/hashset"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
-	"github.com/sleepymole/go-toydb/api/raftpb"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/util/assert"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
