@@ -1,5 +1,5 @@
 syntax = "proto3";
-package toydb.mvccpb;
+package toydb.storagepb;
 
 option go_package = "github.com/sleepymole/go-toydb/storage/storagepb";
 

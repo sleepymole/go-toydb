@@ -2,6 +2,7 @@ syntax = "proto3";
 package toydb.sqlpb;
 
 import "raft/raftpb/raft.proto";
+import "storage/storagepb/storage.proto";
 
 option go_package = "github.com/sleepymole/go-toydb/sql/sqlpb";
 
@@ -32,22 +33,152 @@ message QueryResult {
   repeated Row rows = 2;
 }
 
+message StatusRequest {}
+
+message StatusResponse {
+  raftpb.Status raft = 1;
+  string mvcc = 2; // TODO: Use concrete type
+}
+
+message Mutation {
+  message Begin {
+    bool read_only = 1;
+    uint64 as_of = 2;
+  }
+
+  message Commit {
+    storagepb.MVCCTxnState txn = 1;
+  }
+
+  message Rollback {
+    storagepb.MVCCTxnState txn = 1;
+  }
+
+  message Create {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    Row row = 3;
+  }
+
+  message Delete {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    Value id = 3;
+  }
+
+  message Update {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    Value id = 3;
+    Row row = 4;
+  }
+
+  message CreateTable {
+    storagepb.MVCCTxnState txn = 1;
+    Table table = 2;
+  }
+
+  message DeleteTable {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+  }
+
+  oneof command {
+    Begin begin = 1;
+    Commit commit = 2;
+    Rollback rollback = 3;
+    Create create = 4;
+    Delete delete = 5;
+    Update update = 6;
+    CreateTable create_table = 7;
+    DeleteTable delete_table = 8;
+  }
+}
+
+message Query {
+  message Status {}
+
+  message Read {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    Value id = 3;
+  }
+
+  message ReadIndex {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    string column = 3;
+    Value value = 4;
+  }
+
+  message Scan {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    string filter = 3;
+  }
+
+  message ScanIndex {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+    string column = 3;
+  }
+
+  message ScanTables {
+    storagepb.MVCCTxnState txn = 1;
+  }
+
+  message ReadTable {
+    storagepb.MVCCTxnState txn = 1;
+    string table = 2;
+  }
+
+  oneof command {
+    Status status = 1;
+    Read read = 2;
+    ReadIndex read_index = 3;
+    Scan scan = 4;
+    ScanIndex scan_index = 5;
+    ScanTables scan_tables = 6;
+    ReadTable read_table = 7;
+  }
+}
+
+message Table {
+  string name = 1;
+  repeated Column columns = 2;
+}
+
+message Column {
+  string name = 1;
+  ValueType.Enum datatype = 2;
+  bool primary_key = 3;
+  bool nullable = 4;
+  Value default = 5;
+  bool unique = 6;
+  string references = 7;
+  bool index = 8;
+}
+
 message Row {
   repeated Value values = 1;
 }
 
 message Value {
   oneof union {
-    bool b = 1;
-    int64 i = 2;
-    double f = 3;
-    string s = 4;
+    bool null = 1;
+    bool bool = 2;
+    int64 int = 3;
+    double float = 4;
+    string string = 5;
   }
 }
 
-message StatusRequest {}
-
-message StatusResponse {
-  raftpb.Status raft = 1;
-  string mvcc = 2; // TODO: Use concrete type
+message ValueType {
+  enum Enum {
+    NULL = 0;
+    BOOL = 1;
+    INT = 2;
+    FLOAT = 3;
+    STRING = 4;
+  }
 }

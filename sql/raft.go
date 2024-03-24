@@ -1,7 +1,10 @@
 package sql
 
 import (
+	"context"
+
 	"github.com/sleepymole/go-toydb/raft"
+	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
 )
 
@@ -15,14 +18,20 @@ func NewRaftState(engine storage.Engine) *RaftState {
 	return &RaftState{engine: engine}
 }
 
+type RaftClient interface {
+	Mutate(ctx context.Context, command []byte) ([]byte, error)
+	Query(ctx context.Context, command []byte) ([]byte, error)
+	Status(ctx context.Context) (*raftpb.Status, error)
+}
+
 type RaftEngine struct {
 	Engine
 
-	raftServer *raft.Server
+	raftCli RaftClient
 }
 
-func NewRaftEngine(raftServer *raft.Server) *RaftEngine {
-	return &RaftEngine{raftServer: raftServer}
+func NewRaftEngine(raftCli RaftClient) *RaftEngine {
+	return &RaftEngine{raftCli: raftCli}
 }
 
 type RaftTxn struct {

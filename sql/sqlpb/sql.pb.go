@@ -8,6 +8,7 @@ package sqlpb
 
 import (
 	raftpb "github.com/sleepymole/go-toydb/raft/raftpb"
+	storagepb "github.com/sleepymole/go-toydb/storage/storagepb"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -20,6 +21,61 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+type ValueType_Enum int32
+
+const (
+	ValueType_NULL   ValueType_Enum = 0
+	ValueType_BOOL   ValueType_Enum = 1
+	ValueType_INT    ValueType_Enum = 2
+	ValueType_FLOAT  ValueType_Enum = 3
+	ValueType_STRING ValueType_Enum = 4
+)
+
+// Enum value maps for ValueType_Enum.
+var (
+	ValueType_Enum_name = map[int32]string{
+		0: "NULL",
+		1: "BOOL",
+		2: "INT",
+		3: "FLOAT",
+		4: "STRING",
+	}
+	ValueType_Enum_value = map[string]int32{
+		"NULL":   0,
+		"BOOL":   1,
+		"INT":    2,
+		"FLOAT":  3,
+		"STRING": 4,
+	}
+)
+
+func (x ValueType_Enum) Enum() *ValueType_Enum {
+	p := new(ValueType_Enum)
+	*p = x
+	return p
+}
+
+func (x ValueType_Enum) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ValueType_Enum) Descriptor() protoreflect.EnumDescriptor {
+	return file_sql_sqlpb_sql_proto_enumTypes[0].Descriptor()
+}
+
+func (ValueType_Enum) Type() protoreflect.EnumType {
+	return &file_sql_sqlpb_sql_proto_enumTypes[0]
+}
+
+func (x ValueType_Enum) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ValueType_Enum.Descriptor instead.
+func (ValueType_Enum) EnumDescriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{12, 0}
+}
 
 type ExecuteRequest struct {
 	state         protoimpl.MessageState
@@ -273,162 +329,6 @@ func (x *QueryResult) GetRows() []*Row {
 	return nil
 }
 
-type Row struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Values []*Value `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
-}
-
-func (x *Row) Reset() {
-	*x = Row{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_sql_sqlpb_sql_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Row) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Row) ProtoMessage() {}
-
-func (x *Row) ProtoReflect() protoreflect.Message {
-	mi := &file_sql_sqlpb_sql_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Row.ProtoReflect.Descriptor instead.
-func (*Row) Descriptor() ([]byte, []int) {
-	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Row) GetValues() []*Value {
-	if x != nil {
-		return x.Values
-	}
-	return nil
-}
-
-type Value struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// Types that are assignable to Union:
-	//
-	//	*Value_B
-	//	*Value_I
-	//	*Value_F
-	//	*Value_S
-	Union isValue_Union `protobuf_oneof:"union"`
-}
-
-func (x *Value) Reset() {
-	*x = Value{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_sql_sqlpb_sql_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Value) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Value) ProtoMessage() {}
-
-func (x *Value) ProtoReflect() protoreflect.Message {
-	mi := &file_sql_sqlpb_sql_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Value.ProtoReflect.Descriptor instead.
-func (*Value) Descriptor() ([]byte, []int) {
-	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{5}
-}
-
-func (m *Value) GetUnion() isValue_Union {
-	if m != nil {
-		return m.Union
-	}
-	return nil
-}
-
-func (x *Value) GetB() bool {
-	if x, ok := x.GetUnion().(*Value_B); ok {
-		return x.B
-	}
-	return false
-}
-
-func (x *Value) GetI() int64 {
-	if x, ok := x.GetUnion().(*Value_I); ok {
-		return x.I
-	}
-	return 0
-}
-
-func (x *Value) GetF() float64 {
-	if x, ok := x.GetUnion().(*Value_F); ok {
-		return x.F
-	}
-	return 0
-}
-
-func (x *Value) GetS() string {
-	if x, ok := x.GetUnion().(*Value_S); ok {
-		return x.S
-	}
-	return ""
-}
-
-type isValue_Union interface {
-	isValue_Union()
-}
-
-type Value_B struct {
-	B bool `protobuf:"varint,1,opt,name=b,proto3,oneof"`
-}
-
-type Value_I struct {
-	I int64 `protobuf:"varint,2,opt,name=i,proto3,oneof"`
-}
-
-type Value_F struct {
-	F float64 `protobuf:"fixed64,3,opt,name=f,proto3,oneof"`
-}
-
-type Value_S struct {
-	S string `protobuf:"bytes,4,opt,name=s,proto3,oneof"`
-}
-
-func (*Value_B) isValue_Union() {}
-
-func (*Value_I) isValue_Union() {}
-
-func (*Value_F) isValue_Union() {}
-
-func (*Value_S) isValue_Union() {}
-
 type StatusRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -438,7 +338,7 @@ type StatusRequest struct {
 func (x *StatusRequest) Reset() {
 	*x = StatusRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_sql_sqlpb_sql_proto_msgTypes[6]
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -451,7 +351,7 @@ func (x *StatusRequest) String() string {
 func (*StatusRequest) ProtoMessage() {}
 
 func (x *StatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sql_sqlpb_sql_proto_msgTypes[6]
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +364,7 @@ func (x *StatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusRequest.ProtoReflect.Descriptor instead.
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6}
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{4}
 }
 
 type StatusResponse struct {
@@ -479,7 +379,7 @@ type StatusResponse struct {
 func (x *StatusResponse) Reset() {
 	*x = StatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_sql_sqlpb_sql_proto_msgTypes[7]
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -492,7 +392,7 @@ func (x *StatusResponse) String() string {
 func (*StatusResponse) ProtoMessage() {}
 
 func (x *StatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sql_sqlpb_sql_proto_msgTypes[7]
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +405,7 @@ func (x *StatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusResponse.ProtoReflect.Descriptor instead.
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7}
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StatusResponse) GetRaft() *raftpb.Status {
@@ -522,65 +422,1780 @@ func (x *StatusResponse) GetMvcc() string {
 	return ""
 }
 
+type Mutation struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Command:
+	//
+	//	*Mutation_Begin_
+	//	*Mutation_Commit_
+	//	*Mutation_Rollback_
+	//	*Mutation_Create_
+	//	*Mutation_Delete_
+	//	*Mutation_Update_
+	//	*Mutation_CreateTable_
+	//	*Mutation_DeleteTable_
+	Command isMutation_Command `protobuf_oneof:"command"`
+}
+
+func (x *Mutation) Reset() {
+	*x = Mutation{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation) ProtoMessage() {}
+
+func (x *Mutation) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation.ProtoReflect.Descriptor instead.
+func (*Mutation) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6}
+}
+
+func (m *Mutation) GetCommand() isMutation_Command {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+
+func (x *Mutation) GetBegin() *Mutation_Begin {
+	if x, ok := x.GetCommand().(*Mutation_Begin_); ok {
+		return x.Begin
+	}
+	return nil
+}
+
+func (x *Mutation) GetCommit() *Mutation_Commit {
+	if x, ok := x.GetCommand().(*Mutation_Commit_); ok {
+		return x.Commit
+	}
+	return nil
+}
+
+func (x *Mutation) GetRollback() *Mutation_Rollback {
+	if x, ok := x.GetCommand().(*Mutation_Rollback_); ok {
+		return x.Rollback
+	}
+	return nil
+}
+
+func (x *Mutation) GetCreate() *Mutation_Create {
+	if x, ok := x.GetCommand().(*Mutation_Create_); ok {
+		return x.Create
+	}
+	return nil
+}
+
+func (x *Mutation) GetDelete() *Mutation_Delete {
+	if x, ok := x.GetCommand().(*Mutation_Delete_); ok {
+		return x.Delete
+	}
+	return nil
+}
+
+func (x *Mutation) GetUpdate() *Mutation_Update {
+	if x, ok := x.GetCommand().(*Mutation_Update_); ok {
+		return x.Update
+	}
+	return nil
+}
+
+func (x *Mutation) GetCreateTable() *Mutation_CreateTable {
+	if x, ok := x.GetCommand().(*Mutation_CreateTable_); ok {
+		return x.CreateTable
+	}
+	return nil
+}
+
+func (x *Mutation) GetDeleteTable() *Mutation_DeleteTable {
+	if x, ok := x.GetCommand().(*Mutation_DeleteTable_); ok {
+		return x.DeleteTable
+	}
+	return nil
+}
+
+type isMutation_Command interface {
+	isMutation_Command()
+}
+
+type Mutation_Begin_ struct {
+	Begin *Mutation_Begin `protobuf:"bytes,1,opt,name=begin,proto3,oneof"`
+}
+
+type Mutation_Commit_ struct {
+	Commit *Mutation_Commit `protobuf:"bytes,2,opt,name=commit,proto3,oneof"`
+}
+
+type Mutation_Rollback_ struct {
+	Rollback *Mutation_Rollback `protobuf:"bytes,3,opt,name=rollback,proto3,oneof"`
+}
+
+type Mutation_Create_ struct {
+	Create *Mutation_Create `protobuf:"bytes,4,opt,name=create,proto3,oneof"`
+}
+
+type Mutation_Delete_ struct {
+	Delete *Mutation_Delete `protobuf:"bytes,5,opt,name=delete,proto3,oneof"`
+}
+
+type Mutation_Update_ struct {
+	Update *Mutation_Update `protobuf:"bytes,6,opt,name=update,proto3,oneof"`
+}
+
+type Mutation_CreateTable_ struct {
+	CreateTable *Mutation_CreateTable `protobuf:"bytes,7,opt,name=create_table,json=createTable,proto3,oneof"`
+}
+
+type Mutation_DeleteTable_ struct {
+	DeleteTable *Mutation_DeleteTable `protobuf:"bytes,8,opt,name=delete_table,json=deleteTable,proto3,oneof"`
+}
+
+func (*Mutation_Begin_) isMutation_Command() {}
+
+func (*Mutation_Commit_) isMutation_Command() {}
+
+func (*Mutation_Rollback_) isMutation_Command() {}
+
+func (*Mutation_Create_) isMutation_Command() {}
+
+func (*Mutation_Delete_) isMutation_Command() {}
+
+func (*Mutation_Update_) isMutation_Command() {}
+
+func (*Mutation_CreateTable_) isMutation_Command() {}
+
+func (*Mutation_DeleteTable_) isMutation_Command() {}
+
+type Query struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Command:
+	//
+	//	*Query_Status_
+	//	*Query_Read_
+	//	*Query_ReadIndex_
+	//	*Query_Scan_
+	//	*Query_ScanIndex_
+	//	*Query_ScanTables_
+	//	*Query_ReadTable_
+	Command isQuery_Command `protobuf_oneof:"command"`
+}
+
+func (x *Query) Reset() {
+	*x = Query{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query) ProtoMessage() {}
+
+func (x *Query) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query.ProtoReflect.Descriptor instead.
+func (*Query) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7}
+}
+
+func (m *Query) GetCommand() isQuery_Command {
+	if m != nil {
+		return m.Command
+	}
+	return nil
+}
+
+func (x *Query) GetStatus() *Query_Status {
+	if x, ok := x.GetCommand().(*Query_Status_); ok {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *Query) GetRead() *Query_Read {
+	if x, ok := x.GetCommand().(*Query_Read_); ok {
+		return x.Read
+	}
+	return nil
+}
+
+func (x *Query) GetReadIndex() *Query_ReadIndex {
+	if x, ok := x.GetCommand().(*Query_ReadIndex_); ok {
+		return x.ReadIndex
+	}
+	return nil
+}
+
+func (x *Query) GetScan() *Query_Scan {
+	if x, ok := x.GetCommand().(*Query_Scan_); ok {
+		return x.Scan
+	}
+	return nil
+}
+
+func (x *Query) GetScanIndex() *Query_ScanIndex {
+	if x, ok := x.GetCommand().(*Query_ScanIndex_); ok {
+		return x.ScanIndex
+	}
+	return nil
+}
+
+func (x *Query) GetScanTables() *Query_ScanTables {
+	if x, ok := x.GetCommand().(*Query_ScanTables_); ok {
+		return x.ScanTables
+	}
+	return nil
+}
+
+func (x *Query) GetReadTable() *Query_ReadTable {
+	if x, ok := x.GetCommand().(*Query_ReadTable_); ok {
+		return x.ReadTable
+	}
+	return nil
+}
+
+type isQuery_Command interface {
+	isQuery_Command()
+}
+
+type Query_Status_ struct {
+	Status *Query_Status `protobuf:"bytes,1,opt,name=status,proto3,oneof"`
+}
+
+type Query_Read_ struct {
+	Read *Query_Read `protobuf:"bytes,2,opt,name=read,proto3,oneof"`
+}
+
+type Query_ReadIndex_ struct {
+	ReadIndex *Query_ReadIndex `protobuf:"bytes,3,opt,name=read_index,json=readIndex,proto3,oneof"`
+}
+
+type Query_Scan_ struct {
+	Scan *Query_Scan `protobuf:"bytes,4,opt,name=scan,proto3,oneof"`
+}
+
+type Query_ScanIndex_ struct {
+	ScanIndex *Query_ScanIndex `protobuf:"bytes,5,opt,name=scan_index,json=scanIndex,proto3,oneof"`
+}
+
+type Query_ScanTables_ struct {
+	ScanTables *Query_ScanTables `protobuf:"bytes,6,opt,name=scan_tables,json=scanTables,proto3,oneof"`
+}
+
+type Query_ReadTable_ struct {
+	ReadTable *Query_ReadTable `protobuf:"bytes,7,opt,name=read_table,json=readTable,proto3,oneof"`
+}
+
+func (*Query_Status_) isQuery_Command() {}
+
+func (*Query_Read_) isQuery_Command() {}
+
+func (*Query_ReadIndex_) isQuery_Command() {}
+
+func (*Query_Scan_) isQuery_Command() {}
+
+func (*Query_ScanIndex_) isQuery_Command() {}
+
+func (*Query_ScanTables_) isQuery_Command() {}
+
+func (*Query_ReadTable_) isQuery_Command() {}
+
+type Table struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name    string    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Columns []*Column `protobuf:"bytes,2,rep,name=columns,proto3" json:"columns,omitempty"`
+}
+
+func (x *Table) Reset() {
+	*x = Table{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Table) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Table) ProtoMessage() {}
+
+func (x *Table) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Table.ProtoReflect.Descriptor instead.
+func (*Table) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Table) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Table) GetColumns() []*Column {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+type Column struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name       string         `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Datatype   ValueType_Enum `protobuf:"varint,2,opt,name=datatype,proto3,enum=toydb.sqlpb.ValueType_Enum" json:"datatype,omitempty"`
+	PrimaryKey bool           `protobuf:"varint,3,opt,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	Nullable   bool           `protobuf:"varint,4,opt,name=nullable,proto3" json:"nullable,omitempty"`
+	Default    *Value         `protobuf:"bytes,5,opt,name=default,proto3" json:"default,omitempty"`
+	Unique     bool           `protobuf:"varint,6,opt,name=unique,proto3" json:"unique,omitempty"`
+	References string         `protobuf:"bytes,7,opt,name=references,proto3" json:"references,omitempty"`
+	Index      bool           `protobuf:"varint,8,opt,name=index,proto3" json:"index,omitempty"`
+}
+
+func (x *Column) Reset() {
+	*x = Column{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Column) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Column) ProtoMessage() {}
+
+func (x *Column) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Column.ProtoReflect.Descriptor instead.
+func (*Column) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *Column) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Column) GetDatatype() ValueType_Enum {
+	if x != nil {
+		return x.Datatype
+	}
+	return ValueType_NULL
+}
+
+func (x *Column) GetPrimaryKey() bool {
+	if x != nil {
+		return x.PrimaryKey
+	}
+	return false
+}
+
+func (x *Column) GetNullable() bool {
+	if x != nil {
+		return x.Nullable
+	}
+	return false
+}
+
+func (x *Column) GetDefault() *Value {
+	if x != nil {
+		return x.Default
+	}
+	return nil
+}
+
+func (x *Column) GetUnique() bool {
+	if x != nil {
+		return x.Unique
+	}
+	return false
+}
+
+func (x *Column) GetReferences() string {
+	if x != nil {
+		return x.References
+	}
+	return ""
+}
+
+func (x *Column) GetIndex() bool {
+	if x != nil {
+		return x.Index
+	}
+	return false
+}
+
+type Row struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Values []*Value `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+}
+
+func (x *Row) Reset() {
+	*x = Row{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Row) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Row) ProtoMessage() {}
+
+func (x *Row) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Row.ProtoReflect.Descriptor instead.
+func (*Row) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Row) GetValues() []*Value {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+type Value struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Union:
+	//
+	//	*Value_Null
+	//	*Value_Bool
+	//	*Value_Int
+	//	*Value_Float
+	//	*Value_String_
+	Union isValue_Union `protobuf_oneof:"union"`
+}
+
+func (x *Value) Reset() {
+	*x = Value{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Value) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Value) ProtoMessage() {}
+
+func (x *Value) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Value.ProtoReflect.Descriptor instead.
+func (*Value) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{11}
+}
+
+func (m *Value) GetUnion() isValue_Union {
+	if m != nil {
+		return m.Union
+	}
+	return nil
+}
+
+func (x *Value) GetNull() bool {
+	if x, ok := x.GetUnion().(*Value_Null); ok {
+		return x.Null
+	}
+	return false
+}
+
+func (x *Value) GetBool() bool {
+	if x, ok := x.GetUnion().(*Value_Bool); ok {
+		return x.Bool
+	}
+	return false
+}
+
+func (x *Value) GetInt() int64 {
+	if x, ok := x.GetUnion().(*Value_Int); ok {
+		return x.Int
+	}
+	return 0
+}
+
+func (x *Value) GetFloat() float64 {
+	if x, ok := x.GetUnion().(*Value_Float); ok {
+		return x.Float
+	}
+	return 0
+}
+
+func (x *Value) GetString_() string {
+	if x, ok := x.GetUnion().(*Value_String_); ok {
+		return x.String_
+	}
+	return ""
+}
+
+type isValue_Union interface {
+	isValue_Union()
+}
+
+type Value_Null struct {
+	Null bool `protobuf:"varint,1,opt,name=null,proto3,oneof"`
+}
+
+type Value_Bool struct {
+	Bool bool `protobuf:"varint,2,opt,name=bool,proto3,oneof"`
+}
+
+type Value_Int struct {
+	Int int64 `protobuf:"varint,3,opt,name=int,proto3,oneof"`
+}
+
+type Value_Float struct {
+	Float float64 `protobuf:"fixed64,4,opt,name=float,proto3,oneof"`
+}
+
+type Value_String_ struct {
+	String_ string `protobuf:"bytes,5,opt,name=string,proto3,oneof"`
+}
+
+func (*Value_Null) isValue_Union() {}
+
+func (*Value_Bool) isValue_Union() {}
+
+func (*Value_Int) isValue_Union() {}
+
+func (*Value_Float) isValue_Union() {}
+
+func (*Value_String_) isValue_Union() {}
+
+type ValueType struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ValueType) Reset() {
+	*x = ValueType{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[12]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ValueType) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValueType) ProtoMessage() {}
+
+func (x *ValueType) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[12]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValueType.ProtoReflect.Descriptor instead.
+func (*ValueType) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{12}
+}
+
+type Mutation_Begin struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ReadOnly bool   `protobuf:"varint,1,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	AsOf     uint64 `protobuf:"varint,2,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
+}
+
+func (x *Mutation_Begin) Reset() {
+	*x = Mutation_Begin{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[13]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Begin) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Begin) ProtoMessage() {}
+
+func (x *Mutation_Begin) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[13]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Begin.ProtoReflect.Descriptor instead.
+func (*Mutation_Begin) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 0}
+}
+
+func (x *Mutation_Begin) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+func (x *Mutation_Begin) GetAsOf() uint64 {
+	if x != nil {
+		return x.AsOf
+	}
+	return 0
+}
+
+type Mutation_Commit struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+}
+
+func (x *Mutation_Commit) Reset() {
+	*x = Mutation_Commit{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Commit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Commit) ProtoMessage() {}
+
+func (x *Mutation_Commit) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Commit.ProtoReflect.Descriptor instead.
+func (*Mutation_Commit) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 1}
+}
+
+func (x *Mutation_Commit) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+type Mutation_Rollback struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+}
+
+func (x *Mutation_Rollback) Reset() {
+	*x = Mutation_Rollback{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Rollback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Rollback) ProtoMessage() {}
+
+func (x *Mutation_Rollback) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Rollback.ProtoReflect.Descriptor instead.
+func (*Mutation_Rollback) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 2}
+}
+
+func (x *Mutation_Rollback) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+type Mutation_Create struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Row   *Row                    `protobuf:"bytes,3,opt,name=row,proto3" json:"row,omitempty"`
+}
+
+func (x *Mutation_Create) Reset() {
+	*x = Mutation_Create{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Create) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Create) ProtoMessage() {}
+
+func (x *Mutation_Create) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Create.ProtoReflect.Descriptor instead.
+func (*Mutation_Create) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 3}
+}
+
+func (x *Mutation_Create) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Mutation_Create) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Mutation_Create) GetRow() *Row {
+	if x != nil {
+		return x.Row
+	}
+	return nil
+}
+
+type Mutation_Delete struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Id    *Value                  `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (x *Mutation_Delete) Reset() {
+	*x = Mutation_Delete{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Delete) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Delete) ProtoMessage() {}
+
+func (x *Mutation_Delete) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Delete.ProtoReflect.Descriptor instead.
+func (*Mutation_Delete) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 4}
+}
+
+func (x *Mutation_Delete) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Mutation_Delete) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Mutation_Delete) GetId() *Value {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+type Mutation_Update struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Id    *Value                  `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Row   *Row                    `protobuf:"bytes,4,opt,name=row,proto3" json:"row,omitempty"`
+}
+
+func (x *Mutation_Update) Reset() {
+	*x = Mutation_Update{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[18]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_Update) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_Update) ProtoMessage() {}
+
+func (x *Mutation_Update) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[18]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_Update.ProtoReflect.Descriptor instead.
+func (*Mutation_Update) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 5}
+}
+
+func (x *Mutation_Update) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Mutation_Update) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Mutation_Update) GetId() *Value {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *Mutation_Update) GetRow() *Row {
+	if x != nil {
+		return x.Row
+	}
+	return nil
+}
+
+type Mutation_CreateTable struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table *Table                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+}
+
+func (x *Mutation_CreateTable) Reset() {
+	*x = Mutation_CreateTable{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_CreateTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_CreateTable) ProtoMessage() {}
+
+func (x *Mutation_CreateTable) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_CreateTable.ProtoReflect.Descriptor instead.
+func (*Mutation_CreateTable) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 6}
+}
+
+func (x *Mutation_CreateTable) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Mutation_CreateTable) GetTable() *Table {
+	if x != nil {
+		return x.Table
+	}
+	return nil
+}
+
+type Mutation_DeleteTable struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+}
+
+func (x *Mutation_DeleteTable) Reset() {
+	*x = Mutation_DeleteTable{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[20]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Mutation_DeleteTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mutation_DeleteTable) ProtoMessage() {}
+
+func (x *Mutation_DeleteTable) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[20]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mutation_DeleteTable.ProtoReflect.Descriptor instead.
+func (*Mutation_DeleteTable) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{6, 7}
+}
+
+func (x *Mutation_DeleteTable) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Mutation_DeleteTable) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+type Query_Status struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *Query_Status) Reset() {
+	*x = Query_Status{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[21]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_Status) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_Status) ProtoMessage() {}
+
+func (x *Query_Status) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[21]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_Status.ProtoReflect.Descriptor instead.
+func (*Query_Status) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 0}
+}
+
+type Query_Read struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Id    *Value                  `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (x *Query_Read) Reset() {
+	*x = Query_Read{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_Read) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_Read) ProtoMessage() {}
+
+func (x *Query_Read) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_Read.ProtoReflect.Descriptor instead.
+func (*Query_Read) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 1}
+}
+
+func (x *Query_Read) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Query_Read) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Query_Read) GetId() *Value {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+type Query_ReadIndex struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn    *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table  string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Column string                  `protobuf:"bytes,3,opt,name=column,proto3" json:"column,omitempty"`
+	Value  *Value                  `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *Query_ReadIndex) Reset() {
+	*x = Query_ReadIndex{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_ReadIndex) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_ReadIndex) ProtoMessage() {}
+
+func (x *Query_ReadIndex) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_ReadIndex.ProtoReflect.Descriptor instead.
+func (*Query_ReadIndex) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 2}
+}
+
+func (x *Query_ReadIndex) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Query_ReadIndex) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Query_ReadIndex) GetColumn() string {
+	if x != nil {
+		return x.Column
+	}
+	return ""
+}
+
+func (x *Query_ReadIndex) GetValue() *Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+type Query_Scan struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn    *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table  string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Filter string                  `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
+}
+
+func (x *Query_Scan) Reset() {
+	*x = Query_Scan{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[24]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_Scan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_Scan) ProtoMessage() {}
+
+func (x *Query_Scan) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[24]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_Scan.ProtoReflect.Descriptor instead.
+func (*Query_Scan) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 3}
+}
+
+func (x *Query_Scan) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Query_Scan) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Query_Scan) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+type Query_ScanIndex struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn    *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table  string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Column string                  `protobuf:"bytes,3,opt,name=column,proto3" json:"column,omitempty"`
+}
+
+func (x *Query_ScanIndex) Reset() {
+	*x = Query_ScanIndex{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[25]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_ScanIndex) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_ScanIndex) ProtoMessage() {}
+
+func (x *Query_ScanIndex) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[25]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_ScanIndex.ProtoReflect.Descriptor instead.
+func (*Query_ScanIndex) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 4}
+}
+
+func (x *Query_ScanIndex) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Query_ScanIndex) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *Query_ScanIndex) GetColumn() string {
+	if x != nil {
+		return x.Column
+	}
+	return ""
+}
+
+type Query_ScanTables struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+}
+
+func (x *Query_ScanTables) Reset() {
+	*x = Query_ScanTables{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[26]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_ScanTables) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_ScanTables) ProtoMessage() {}
+
+func (x *Query_ScanTables) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[26]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_ScanTables.ProtoReflect.Descriptor instead.
+func (*Query_ScanTables) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 5}
+}
+
+func (x *Query_ScanTables) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+type Query_ReadTable struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Txn   *storagepb.MVCCTxnState `protobuf:"bytes,1,opt,name=txn,proto3" json:"txn,omitempty"`
+	Table string                  `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+}
+
+func (x *Query_ReadTable) Reset() {
+	*x = Query_ReadTable{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_sql_sqlpb_sql_proto_msgTypes[27]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Query_ReadTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Query_ReadTable) ProtoMessage() {}
+
+func (x *Query_ReadTable) ProtoReflect() protoreflect.Message {
+	mi := &file_sql_sqlpb_sql_proto_msgTypes[27]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Query_ReadTable.ProtoReflect.Descriptor instead.
+func (*Query_ReadTable) Descriptor() ([]byte, []int) {
+	return file_sql_sqlpb_sql_proto_rawDescGZIP(), []int{7, 6}
+}
+
+func (x *Query_ReadTable) GetTxn() *storagepb.MVCCTxnState {
+	if x != nil {
+		return x.Txn
+	}
+	return nil
+}
+
+func (x *Query_ReadTable) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
 var File_sql_sqlpb_sql_proto protoreflect.FileDescriptor
 
 var file_sql_sqlpb_sql_proto_rawDesc = []byte{
 	0x0a, 0x13, 0x73, 0x71, 0x6c, 0x2f, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2f, 0x73, 0x71, 0x6c, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c,
 	0x70, 0x62, 0x1a, 0x16, 0x72, 0x61, 0x66, 0x74, 0x2f, 0x72, 0x61, 0x66, 0x74, 0x70, 0x62, 0x2f,
-	0x72, 0x61, 0x66, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x26, 0x0a, 0x0e, 0x45, 0x78,
-	0x65, 0x63, 0x75, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05,
-	0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x71, 0x75, 0x65,
-	0x72, 0x79, 0x22, 0xb4, 0x01, 0x0a, 0x0f, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x40, 0x0a, 0x0d, 0x6d, 0x75, 0x74, 0x61, 0x74, 0x65,
-	0x5f, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e,
+	0x72, 0x61, 0x66, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1f, 0x73, 0x74, 0x6f, 0x72,
+	0x61, 0x67, 0x65, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2f, 0x73, 0x74,
+	0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x26, 0x0a, 0x0e, 0x45,
+	0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a,
+	0x05, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x71, 0x75,
+	0x65, 0x72, 0x79, 0x22, 0xb4, 0x01, 0x0a, 0x0f, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x40, 0x0a, 0x0d, 0x6d, 0x75, 0x74, 0x61, 0x74,
+	0x65, 0x5f, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19,
+	0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74,
+	0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x48, 0x00, 0x52, 0x0c, 0x6d, 0x75, 0x74,
+	0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x3d, 0x0a, 0x0c, 0x71, 0x75, 0x65,
+	0x72, 0x79, 0x5f, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x18, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75,
+	0x65, 0x72, 0x79, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x48, 0x00, 0x52, 0x0b, 0x71, 0x75, 0x65,
+	0x72, 0x79, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x16, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f,
+	0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
+	0x42, 0x08, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x59, 0x0a, 0x0c, 0x4d, 0x75,
+	0x74, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x24, 0x0a, 0x0e, 0x6c, 0x61,
+	0x73, 0x74, 0x5f, 0x69, 0x6e, 0x73, 0x65, 0x72, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0c, 0x6c, 0x61, 0x73, 0x74, 0x49, 0x6e, 0x73, 0x65, 0x72, 0x74, 0x49, 0x64,
+	0x12, 0x23, 0x0a, 0x0d, 0x72, 0x6f, 0x77, 0x73, 0x5f, 0x61, 0x66, 0x66, 0x65, 0x63, 0x74, 0x65,
+	0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0c, 0x72, 0x6f, 0x77, 0x73, 0x41, 0x66, 0x66,
+	0x65, 0x63, 0x74, 0x65, 0x64, 0x22, 0x4d, 0x0a, 0x0b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x73, 0x18,
+	0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x73, 0x12, 0x24,
+	0x0a, 0x04, 0x72, 0x6f, 0x77, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74,
+	0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x77, 0x52, 0x04,
+	0x72, 0x6f, 0x77, 0x73, 0x22, 0x0f, 0x0a, 0x0d, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4e, 0x0a, 0x0e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x28, 0x0a, 0x04, 0x72, 0x61, 0x66, 0x74, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x72, 0x61,
+	0x66, 0x74, 0x70, 0x62, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x04, 0x72, 0x61, 0x66,
+	0x74, 0x12, 0x12, 0x0a, 0x04, 0x6d, 0x76, 0x63, 0x63, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x6d, 0x76, 0x63, 0x63, 0x22, 0xef, 0x09, 0x0a, 0x08, 0x4d, 0x75, 0x74, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x12, 0x33, 0x0a, 0x05, 0x62, 0x65, 0x67, 0x69, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e,
+	0x4d, 0x75, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x42, 0x65, 0x67, 0x69, 0x6e, 0x48, 0x00,
+	0x52, 0x05, 0x62, 0x65, 0x67, 0x69, 0x6e, 0x12, 0x36, 0x0a, 0x06, 0x63, 0x6f, 0x6d, 0x6d, 0x69,
+	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e,
+	0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x43,
+	0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x48, 0x00, 0x52, 0x06, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x12,
+	0x3c, 0x0a, 0x08, 0x72, 0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1e, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e,
+	0x4d, 0x75, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x52, 0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63,
+	0x6b, 0x48, 0x00, 0x52, 0x08, 0x72, 0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x12, 0x36, 0x0a,
+	0x06, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e,
 	0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61,
-	0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x48, 0x00, 0x52, 0x0c, 0x6d, 0x75, 0x74, 0x61,
-	0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x3d, 0x0a, 0x0c, 0x71, 0x75, 0x65, 0x72,
-	0x79, 0x5f, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18,
-	0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75, 0x65,
-	0x72, 0x79, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x48, 0x00, 0x52, 0x0b, 0x71, 0x75, 0x65, 0x72,
-	0x79, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x16, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x42,
-	0x08, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x59, 0x0a, 0x0c, 0x4d, 0x75, 0x74,
-	0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x24, 0x0a, 0x0e, 0x6c, 0x61, 0x73,
-	0x74, 0x5f, 0x69, 0x6e, 0x73, 0x65, 0x72, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0c, 0x6c, 0x61, 0x73, 0x74, 0x49, 0x6e, 0x73, 0x65, 0x72, 0x74, 0x49, 0x64, 0x12,
-	0x23, 0x0a, 0x0d, 0x72, 0x6f, 0x77, 0x73, 0x5f, 0x61, 0x66, 0x66, 0x65, 0x63, 0x74, 0x65, 0x64,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0c, 0x72, 0x6f, 0x77, 0x73, 0x41, 0x66, 0x66, 0x65,
-	0x63, 0x74, 0x65, 0x64, 0x22, 0x4d, 0x0a, 0x0b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x73,
-	0x75, 0x6c, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x73, 0x18, 0x01,
-	0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x73, 0x12, 0x24, 0x0a,
-	0x04, 0x72, 0x6f, 0x77, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x6f,
-	0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x77, 0x52, 0x04, 0x72,
-	0x6f, 0x77, 0x73, 0x22, 0x31, 0x0a, 0x03, 0x52, 0x6f, 0x77, 0x12, 0x2a, 0x0a, 0x06, 0x76, 0x61,
-	0x6c, 0x75, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x6f, 0x79,
-	0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x06,
-	0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x22, 0x50, 0x0a, 0x05, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12,
-	0x0e, 0x0a, 0x01, 0x62, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x48, 0x00, 0x52, 0x01, 0x62, 0x12,
-	0x0e, 0x0a, 0x01, 0x69, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x48, 0x00, 0x52, 0x01, 0x69, 0x12,
-	0x0e, 0x0a, 0x01, 0x66, 0x18, 0x03, 0x20, 0x01, 0x28, 0x01, 0x48, 0x00, 0x52, 0x01, 0x66, 0x12,
-	0x0e, 0x0a, 0x01, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x01, 0x73, 0x42,
-	0x07, 0x0a, 0x05, 0x75, 0x6e, 0x69, 0x6f, 0x6e, 0x22, 0x0f, 0x0a, 0x0d, 0x53, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4e, 0x0a, 0x0e, 0x53, 0x74, 0x61,
-	0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x28, 0x0a, 0x04, 0x72,
-	0x61, 0x66, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x74, 0x6f, 0x79, 0x64,
-	0x62, 0x2e, 0x72, 0x61, 0x66, 0x74, 0x70, 0x62, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52,
-	0x04, 0x72, 0x61, 0x66, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6d, 0x76, 0x63, 0x63, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x04, 0x6d, 0x76, 0x63, 0x63, 0x32, 0x96, 0x01, 0x0a, 0x03, 0x53, 0x51,
-	0x4c, 0x12, 0x4a, 0x0a, 0x07, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x12, 0x1b, 0x2e, 0x74,
-	0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x45, 0x78, 0x65, 0x63, 0x75,
-	0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64,
+	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x48, 0x00, 0x52, 0x06, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x12, 0x36, 0x0a, 0x06, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x18,
+	0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71,
+	0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x48, 0x00, 0x52, 0x06, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x36, 0x0a,
+	0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e,
+	0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x48, 0x00, 0x52, 0x06, 0x75,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x46, 0x0a, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x74, 0x6f,
+	0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x48, 0x00,
+	0x52, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x46, 0x0a,
+	0x0c, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x08, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70,
+	0x62, 0x2e, 0x4d, 0x75, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x48, 0x00, 0x52, 0x0b, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x54, 0x61, 0x62, 0x6c, 0x65, 0x1a, 0x39, 0x0a, 0x05, 0x42, 0x65, 0x67, 0x69, 0x6e, 0x12, 0x1b,
+	0x0a, 0x09, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x6f, 0x6e, 0x6c, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x08, 0x72, 0x65, 0x61, 0x64, 0x4f, 0x6e, 0x6c, 0x79, 0x12, 0x13, 0x0a, 0x05, 0x61,
+	0x73, 0x5f, 0x6f, 0x66, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x04, 0x61, 0x73, 0x4f, 0x66,
+	0x1a, 0x39, 0x0a, 0x06, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e,
+	0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78,
+	0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x1a, 0x3b, 0x0a, 0x08, 0x52,
+	0x6f, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f,
+	0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74,
+	0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x1a, 0x73, 0x0a, 0x06, 0x43, 0x72, 0x65, 0x61,
+	0x74, 0x65, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70,
+	0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03,
+	0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x22, 0x0a, 0x03, 0x72, 0x6f, 0x77,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73,
+	0x71, 0x6c, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x77, 0x52, 0x03, 0x72, 0x6f, 0x77, 0x1a, 0x73, 0x0a,
+	0x06, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f,
+	0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74,
+	0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c,
+	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x22,
+	0x0a, 0x02, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x6f, 0x79,
+	0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x02,
+	0x69, 0x64, 0x1a, 0x97, 0x01, 0x0a, 0x06, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x2f, 0x0a,
+	0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79,
+	0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43,
+	0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14,
+	0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74,
+	0x61, 0x62, 0x6c, 0x65, 0x12, 0x22, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x12, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56,
+	0x61, 0x6c, 0x75, 0x65, 0x52, 0x02, 0x69, 0x64, 0x12, 0x22, 0x0a, 0x03, 0x72, 0x6f, 0x77, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71,
+	0x6c, 0x70, 0x62, 0x2e, 0x52, 0x6f, 0x77, 0x52, 0x03, 0x72, 0x6f, 0x77, 0x1a, 0x68, 0x0a, 0x0b,
+	0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x2f, 0x0a, 0x03, 0x74,
+	0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62,
+	0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54,
+	0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x28, 0x0a, 0x05,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x6f,
+	0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x52,
+	0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x1a, 0x54, 0x0a, 0x0b, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x54, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61,
+	0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74,
+	0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x42, 0x09, 0x0a, 0x07,
+	0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x22, 0x9e, 0x08, 0x0a, 0x05, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x12, 0x33, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x19, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x48, 0x00, 0x52, 0x06,
+	0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x2d, 0x0a, 0x04, 0x72, 0x65, 0x61, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c,
+	0x70, 0x62, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x52, 0x65, 0x61, 0x64, 0x48, 0x00, 0x52,
+	0x04, 0x72, 0x65, 0x61, 0x64, 0x12, 0x3d, 0x0a, 0x0a, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x6e,
+	0x64, 0x65, 0x78, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64,
+	0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x52, 0x65,
+	0x61, 0x64, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x48, 0x00, 0x52, 0x09, 0x72, 0x65, 0x61, 0x64, 0x49,
+	0x6e, 0x64, 0x65, 0x78, 0x12, 0x2d, 0x0a, 0x04, 0x73, 0x63, 0x61, 0x6e, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x17, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62,
+	0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x53, 0x63, 0x61, 0x6e, 0x48, 0x00, 0x52, 0x04, 0x73,
+	0x63, 0x61, 0x6e, 0x12, 0x3d, 0x0a, 0x0a, 0x73, 0x63, 0x61, 0x6e, 0x5f, 0x69, 0x6e, 0x64, 0x65,
+	0x78, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e,
+	0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x53, 0x63, 0x61, 0x6e,
+	0x49, 0x6e, 0x64, 0x65, 0x78, 0x48, 0x00, 0x52, 0x09, 0x73, 0x63, 0x61, 0x6e, 0x49, 0x6e, 0x64,
+	0x65, 0x78, 0x12, 0x40, 0x0a, 0x0b, 0x73, 0x63, 0x61, 0x6e, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65,
+	0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e,
+	0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x53, 0x63, 0x61, 0x6e,
+	0x54, 0x61, 0x62, 0x6c, 0x65, 0x73, 0x48, 0x00, 0x52, 0x0a, 0x73, 0x63, 0x61, 0x6e, 0x54, 0x61,
+	0x62, 0x6c, 0x65, 0x73, 0x12, 0x3d, 0x0a, 0x0a, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x74, 0x61, 0x62,
+	0x6c, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62,
+	0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x2e, 0x52, 0x65, 0x61,
+	0x64, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x48, 0x00, 0x52, 0x09, 0x72, 0x65, 0x61, 0x64, 0x54, 0x61,
+	0x62, 0x6c, 0x65, 0x1a, 0x08, 0x0a, 0x06, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x1a, 0x71, 0x0a,
+	0x04, 0x52, 0x65, 0x61, 0x64, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61,
+	0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74,
+	0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x22, 0x0a, 0x02,
+	0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62,
+	0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x02, 0x69, 0x64,
+	0x1a, 0x94, 0x01, 0x0a, 0x09, 0x52, 0x65, 0x61, 0x64, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x2f,
+	0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f,
+	0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56,
+	0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12,
+	0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x12, 0x28, 0x0a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74,
+	0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65,
+	0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x1a, 0x65, 0x0a, 0x04, 0x53, 0x63, 0x61, 0x6e, 0x12,
+	0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74,
+	0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d,
+	0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e,
+	0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x1a, 0x6a,
+	0x0a, 0x09, 0x53, 0x63, 0x61, 0x6e, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x2f, 0x0a, 0x03, 0x74,
+	0x78, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62,
+	0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54,
+	0x78, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62,
+	0x6c, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x1a, 0x3d, 0x0a, 0x0a, 0x53, 0x63,
+	0x61, 0x6e, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x73, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74,
+	0x6f, 0x72, 0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53,
+	0x74, 0x61, 0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x1a, 0x52, 0x0a, 0x09, 0x52, 0x65, 0x61,
+	0x64, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x2f, 0x0a, 0x03, 0x74, 0x78, 0x6e, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x74, 0x6f, 0x72,
+	0x61, 0x67, 0x65, 0x70, 0x62, 0x2e, 0x4d, 0x56, 0x43, 0x43, 0x54, 0x78, 0x6e, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x52, 0x03, 0x74, 0x78, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x42, 0x09, 0x0a,
+	0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x22, 0x4a, 0x0a, 0x05, 0x54, 0x61, 0x62, 0x6c,
+	0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x2d, 0x0a, 0x07, 0x63, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x73,
+	0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73,
+	0x71, 0x6c, 0x70, 0x62, 0x2e, 0x43, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x52, 0x07, 0x63, 0x6f, 0x6c,
+	0x75, 0x6d, 0x6e, 0x73, 0x22, 0x8e, 0x02, 0x0a, 0x06, 0x43, 0x6f, 0x6c, 0x75, 0x6d, 0x6e, 0x12,
+	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
+	0x61, 0x6d, 0x65, 0x12, 0x37, 0x0a, 0x08, 0x64, 0x61, 0x74, 0x61, 0x74, 0x79, 0x70, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1b, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71,
+	0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x54, 0x79, 0x70, 0x65, 0x2e, 0x45, 0x6e,
+	0x75, 0x6d, 0x52, 0x08, 0x64, 0x61, 0x74, 0x61, 0x74, 0x79, 0x70, 0x65, 0x12, 0x1f, 0x0a, 0x0b,
+	0x70, 0x72, 0x69, 0x6d, 0x61, 0x72, 0x79, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x0a, 0x70, 0x72, 0x69, 0x6d, 0x61, 0x72, 0x79, 0x4b, 0x65, 0x79, 0x12, 0x1a, 0x0a,
+	0x08, 0x6e, 0x75, 0x6c, 0x6c, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x08, 0x6e, 0x75, 0x6c, 0x6c, 0x61, 0x62, 0x6c, 0x65, 0x12, 0x2c, 0x0a, 0x07, 0x64, 0x65, 0x66,
+	0x61, 0x75, 0x6c, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x6f, 0x79,
+	0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x07,
+	0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x75, 0x6e, 0x69, 0x71, 0x75,
+	0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x75, 0x6e, 0x69, 0x71, 0x75, 0x65, 0x12,
+	0x1e, 0x0a, 0x0a, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x73, 0x18, 0x07, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0a, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x73, 0x12,
+	0x14, 0x0a, 0x05, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05,
+	0x69, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x31, 0x0a, 0x03, 0x52, 0x6f, 0x77, 0x12, 0x2a, 0x0a, 0x06,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74,
+	0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65,
+	0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x22, 0x82, 0x01, 0x0a, 0x05, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x12, 0x14, 0x0a, 0x04, 0x6e, 0x75, 0x6c, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08,
+	0x48, 0x00, 0x52, 0x04, 0x6e, 0x75, 0x6c, 0x6c, 0x12, 0x14, 0x0a, 0x04, 0x62, 0x6f, 0x6f, 0x6c,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x48, 0x00, 0x52, 0x04, 0x62, 0x6f, 0x6f, 0x6c, 0x12, 0x12,
+	0x0a, 0x03, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x48, 0x00, 0x52, 0x03, 0x69,
+	0x6e, 0x74, 0x12, 0x16, 0x0a, 0x05, 0x66, 0x6c, 0x6f, 0x61, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x01, 0x48, 0x00, 0x52, 0x05, 0x66, 0x6c, 0x6f, 0x61, 0x74, 0x12, 0x18, 0x0a, 0x06, 0x73, 0x74,
+	0x72, 0x69, 0x6e, 0x67, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x06, 0x73, 0x74,
+	0x72, 0x69, 0x6e, 0x67, 0x42, 0x07, 0x0a, 0x05, 0x75, 0x6e, 0x69, 0x6f, 0x6e, 0x22, 0x47, 0x0a,
+	0x09, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x54, 0x79, 0x70, 0x65, 0x22, 0x3a, 0x0a, 0x04, 0x45, 0x6e,
+	0x75, 0x6d, 0x12, 0x08, 0x0a, 0x04, 0x4e, 0x55, 0x4c, 0x4c, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04,
+	0x42, 0x4f, 0x4f, 0x4c, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x49, 0x4e, 0x54, 0x10, 0x02, 0x12,
+	0x09, 0x0a, 0x05, 0x46, 0x4c, 0x4f, 0x41, 0x54, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x53, 0x54,
+	0x52, 0x49, 0x4e, 0x47, 0x10, 0x04, 0x32, 0x96, 0x01, 0x0a, 0x03, 0x53, 0x51, 0x4c, 0x12, 0x4a,
+	0x0a, 0x07, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x12, 0x1b, 0x2e, 0x74, 0x6f, 0x79, 0x64,
 	0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x28, 0x01, 0x30, 0x01, 0x12, 0x43, 0x0a,
-	0x06, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1a, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e,
-	0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70,
-	0x62, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
-	0x2f, 0x73, 0x6c, 0x65, 0x65, 0x70, 0x79, 0x6d, 0x6f, 0x6c, 0x65, 0x2f, 0x67, 0x6f, 0x2d, 0x74,
-	0x6f, 0x79, 0x64, 0x62, 0x2f, 0x73, 0x71, 0x6c, 0x2f, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1c, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73,
+	0x71, 0x6c, 0x70, 0x62, 0x2e, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x28, 0x01, 0x30, 0x01, 0x12, 0x43, 0x0a, 0x06, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x12, 0x1a, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c,
+	0x70, 0x62, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x1b, 0x2e, 0x74, 0x6f, 0x79, 0x64, 0x62, 0x2e, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x2e, 0x53,
+	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42,
+	0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x6c,
+	0x65, 0x65, 0x70, 0x79, 0x6d, 0x6f, 0x6c, 0x65, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x6f, 0x79, 0x64,
+	0x62, 0x2f, 0x73, 0x71, 0x6c, 0x2f, 0x73, 0x71, 0x6c, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -595,33 +2210,94 @@ func file_sql_sqlpb_sql_proto_rawDescGZIP() []byte {
 	return file_sql_sqlpb_sql_proto_rawDescData
 }
 
-var file_sql_sqlpb_sql_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_sql_sqlpb_sql_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_sql_sqlpb_sql_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_sql_sqlpb_sql_proto_goTypes = []interface{}{
-	(*ExecuteRequest)(nil),  // 0: toydb.sqlpb.ExecuteRequest
-	(*ExecuteResponse)(nil), // 1: toydb.sqlpb.ExecuteResponse
-	(*MutateResult)(nil),    // 2: toydb.sqlpb.MutateResult
-	(*QueryResult)(nil),     // 3: toydb.sqlpb.QueryResult
-	(*Row)(nil),             // 4: toydb.sqlpb.Row
-	(*Value)(nil),           // 5: toydb.sqlpb.Value
-	(*StatusRequest)(nil),   // 6: toydb.sqlpb.StatusRequest
-	(*StatusResponse)(nil),  // 7: toydb.sqlpb.StatusResponse
-	(*raftpb.Status)(nil),   // 8: toydb.raftpb.Status
+	(ValueType_Enum)(0),            // 0: toydb.sqlpb.ValueType.Enum
+	(*ExecuteRequest)(nil),         // 1: toydb.sqlpb.ExecuteRequest
+	(*ExecuteResponse)(nil),        // 2: toydb.sqlpb.ExecuteResponse
+	(*MutateResult)(nil),           // 3: toydb.sqlpb.MutateResult
+	(*QueryResult)(nil),            // 4: toydb.sqlpb.QueryResult
+	(*StatusRequest)(nil),          // 5: toydb.sqlpb.StatusRequest
+	(*StatusResponse)(nil),         // 6: toydb.sqlpb.StatusResponse
+	(*Mutation)(nil),               // 7: toydb.sqlpb.Mutation
+	(*Query)(nil),                  // 8: toydb.sqlpb.Query
+	(*Table)(nil),                  // 9: toydb.sqlpb.Table
+	(*Column)(nil),                 // 10: toydb.sqlpb.Column
+	(*Row)(nil),                    // 11: toydb.sqlpb.Row
+	(*Value)(nil),                  // 12: toydb.sqlpb.Value
+	(*ValueType)(nil),              // 13: toydb.sqlpb.ValueType
+	(*Mutation_Begin)(nil),         // 14: toydb.sqlpb.Mutation.Begin
+	(*Mutation_Commit)(nil),        // 15: toydb.sqlpb.Mutation.Commit
+	(*Mutation_Rollback)(nil),      // 16: toydb.sqlpb.Mutation.Rollback
+	(*Mutation_Create)(nil),        // 17: toydb.sqlpb.Mutation.Create
+	(*Mutation_Delete)(nil),        // 18: toydb.sqlpb.Mutation.Delete
+	(*Mutation_Update)(nil),        // 19: toydb.sqlpb.Mutation.Update
+	(*Mutation_CreateTable)(nil),   // 20: toydb.sqlpb.Mutation.CreateTable
+	(*Mutation_DeleteTable)(nil),   // 21: toydb.sqlpb.Mutation.DeleteTable
+	(*Query_Status)(nil),           // 22: toydb.sqlpb.Query.Status
+	(*Query_Read)(nil),             // 23: toydb.sqlpb.Query.Read
+	(*Query_ReadIndex)(nil),        // 24: toydb.sqlpb.Query.ReadIndex
+	(*Query_Scan)(nil),             // 25: toydb.sqlpb.Query.Scan
+	(*Query_ScanIndex)(nil),        // 26: toydb.sqlpb.Query.ScanIndex
+	(*Query_ScanTables)(nil),       // 27: toydb.sqlpb.Query.ScanTables
+	(*Query_ReadTable)(nil),        // 28: toydb.sqlpb.Query.ReadTable
+	(*raftpb.Status)(nil),          // 29: toydb.raftpb.Status
+	(*storagepb.MVCCTxnState)(nil), // 30: toydb.storagepb.MVCCTxnState
 }
 var file_sql_sqlpb_sql_proto_depIdxs = []int32{
-	2, // 0: toydb.sqlpb.ExecuteResponse.mutate_result:type_name -> toydb.sqlpb.MutateResult
-	3, // 1: toydb.sqlpb.ExecuteResponse.query_result:type_name -> toydb.sqlpb.QueryResult
-	4, // 2: toydb.sqlpb.QueryResult.rows:type_name -> toydb.sqlpb.Row
-	5, // 3: toydb.sqlpb.Row.values:type_name -> toydb.sqlpb.Value
-	8, // 4: toydb.sqlpb.StatusResponse.raft:type_name -> toydb.raftpb.Status
-	0, // 5: toydb.sqlpb.SQL.Execute:input_type -> toydb.sqlpb.ExecuteRequest
-	6, // 6: toydb.sqlpb.SQL.Status:input_type -> toydb.sqlpb.StatusRequest
-	1, // 7: toydb.sqlpb.SQL.Execute:output_type -> toydb.sqlpb.ExecuteResponse
-	7, // 8: toydb.sqlpb.SQL.Status:output_type -> toydb.sqlpb.StatusResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3,  // 0: toydb.sqlpb.ExecuteResponse.mutate_result:type_name -> toydb.sqlpb.MutateResult
+	4,  // 1: toydb.sqlpb.ExecuteResponse.query_result:type_name -> toydb.sqlpb.QueryResult
+	11, // 2: toydb.sqlpb.QueryResult.rows:type_name -> toydb.sqlpb.Row
+	29, // 3: toydb.sqlpb.StatusResponse.raft:type_name -> toydb.raftpb.Status
+	14, // 4: toydb.sqlpb.Mutation.begin:type_name -> toydb.sqlpb.Mutation.Begin
+	15, // 5: toydb.sqlpb.Mutation.commit:type_name -> toydb.sqlpb.Mutation.Commit
+	16, // 6: toydb.sqlpb.Mutation.rollback:type_name -> toydb.sqlpb.Mutation.Rollback
+	17, // 7: toydb.sqlpb.Mutation.create:type_name -> toydb.sqlpb.Mutation.Create
+	18, // 8: toydb.sqlpb.Mutation.delete:type_name -> toydb.sqlpb.Mutation.Delete
+	19, // 9: toydb.sqlpb.Mutation.update:type_name -> toydb.sqlpb.Mutation.Update
+	20, // 10: toydb.sqlpb.Mutation.create_table:type_name -> toydb.sqlpb.Mutation.CreateTable
+	21, // 11: toydb.sqlpb.Mutation.delete_table:type_name -> toydb.sqlpb.Mutation.DeleteTable
+	22, // 12: toydb.sqlpb.Query.status:type_name -> toydb.sqlpb.Query.Status
+	23, // 13: toydb.sqlpb.Query.read:type_name -> toydb.sqlpb.Query.Read
+	24, // 14: toydb.sqlpb.Query.read_index:type_name -> toydb.sqlpb.Query.ReadIndex
+	25, // 15: toydb.sqlpb.Query.scan:type_name -> toydb.sqlpb.Query.Scan
+	26, // 16: toydb.sqlpb.Query.scan_index:type_name -> toydb.sqlpb.Query.ScanIndex
+	27, // 17: toydb.sqlpb.Query.scan_tables:type_name -> toydb.sqlpb.Query.ScanTables
+	28, // 18: toydb.sqlpb.Query.read_table:type_name -> toydb.sqlpb.Query.ReadTable
+	10, // 19: toydb.sqlpb.Table.columns:type_name -> toydb.sqlpb.Column
+	0,  // 20: toydb.sqlpb.Column.datatype:type_name -> toydb.sqlpb.ValueType.Enum
+	12, // 21: toydb.sqlpb.Column.default:type_name -> toydb.sqlpb.Value
+	12, // 22: toydb.sqlpb.Row.values:type_name -> toydb.sqlpb.Value
+	30, // 23: toydb.sqlpb.Mutation.Commit.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 24: toydb.sqlpb.Mutation.Rollback.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 25: toydb.sqlpb.Mutation.Create.txn:type_name -> toydb.storagepb.MVCCTxnState
+	11, // 26: toydb.sqlpb.Mutation.Create.row:type_name -> toydb.sqlpb.Row
+	30, // 27: toydb.sqlpb.Mutation.Delete.txn:type_name -> toydb.storagepb.MVCCTxnState
+	12, // 28: toydb.sqlpb.Mutation.Delete.id:type_name -> toydb.sqlpb.Value
+	30, // 29: toydb.sqlpb.Mutation.Update.txn:type_name -> toydb.storagepb.MVCCTxnState
+	12, // 30: toydb.sqlpb.Mutation.Update.id:type_name -> toydb.sqlpb.Value
+	11, // 31: toydb.sqlpb.Mutation.Update.row:type_name -> toydb.sqlpb.Row
+	30, // 32: toydb.sqlpb.Mutation.CreateTable.txn:type_name -> toydb.storagepb.MVCCTxnState
+	9,  // 33: toydb.sqlpb.Mutation.CreateTable.table:type_name -> toydb.sqlpb.Table
+	30, // 34: toydb.sqlpb.Mutation.DeleteTable.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 35: toydb.sqlpb.Query.Read.txn:type_name -> toydb.storagepb.MVCCTxnState
+	12, // 36: toydb.sqlpb.Query.Read.id:type_name -> toydb.sqlpb.Value
+	30, // 37: toydb.sqlpb.Query.ReadIndex.txn:type_name -> toydb.storagepb.MVCCTxnState
+	12, // 38: toydb.sqlpb.Query.ReadIndex.value:type_name -> toydb.sqlpb.Value
+	30, // 39: toydb.sqlpb.Query.Scan.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 40: toydb.sqlpb.Query.ScanIndex.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 41: toydb.sqlpb.Query.ScanTables.txn:type_name -> toydb.storagepb.MVCCTxnState
+	30, // 42: toydb.sqlpb.Query.ReadTable.txn:type_name -> toydb.storagepb.MVCCTxnState
+	1,  // 43: toydb.sqlpb.SQL.Execute:input_type -> toydb.sqlpb.ExecuteRequest
+	5,  // 44: toydb.sqlpb.SQL.Status:input_type -> toydb.sqlpb.StatusRequest
+	2,  // 45: toydb.sqlpb.SQL.Execute:output_type -> toydb.sqlpb.ExecuteResponse
+	6,  // 46: toydb.sqlpb.SQL.Status:output_type -> toydb.sqlpb.StatusResponse
+	45, // [45:47] is the sub-list for method output_type
+	43, // [43:45] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_sql_sqlpb_sql_proto_init() }
@@ -679,30 +2355,6 @@ func file_sql_sqlpb_sql_proto_init() {
 			}
 		}
 		file_sql_sqlpb_sql_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Row); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_sql_sqlpb_sql_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Value); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_sql_sqlpb_sql_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*StatusRequest); i {
 			case 0:
 				return &v.state
@@ -714,8 +2366,272 @@ func file_sql_sqlpb_sql_proto_init() {
 				return nil
 			}
 		}
-		file_sql_sqlpb_sql_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_sql_sqlpb_sql_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*StatusResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Table); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Column); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Row); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Value); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ValueType); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Begin); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Commit); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Rollback); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Create); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Delete); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_Update); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_CreateTable); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Mutation_DeleteTable); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_Status); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_Read); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_ReadIndex); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_Scan); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_ScanIndex); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_ScanTables); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_sql_sqlpb_sql_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Query_ReadTable); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -732,24 +2648,45 @@ func file_sql_sqlpb_sql_proto_init() {
 		(*ExecuteResponse_QueryResult)(nil),
 		(*ExecuteResponse_Error)(nil),
 	}
-	file_sql_sqlpb_sql_proto_msgTypes[5].OneofWrappers = []interface{}{
-		(*Value_B)(nil),
-		(*Value_I)(nil),
-		(*Value_F)(nil),
-		(*Value_S)(nil),
+	file_sql_sqlpb_sql_proto_msgTypes[6].OneofWrappers = []interface{}{
+		(*Mutation_Begin_)(nil),
+		(*Mutation_Commit_)(nil),
+		(*Mutation_Rollback_)(nil),
+		(*Mutation_Create_)(nil),
+		(*Mutation_Delete_)(nil),
+		(*Mutation_Update_)(nil),
+		(*Mutation_CreateTable_)(nil),
+		(*Mutation_DeleteTable_)(nil),
+	}
+	file_sql_sqlpb_sql_proto_msgTypes[7].OneofWrappers = []interface{}{
+		(*Query_Status_)(nil),
+		(*Query_Read_)(nil),
+		(*Query_ReadIndex_)(nil),
+		(*Query_Scan_)(nil),
+		(*Query_ScanIndex_)(nil),
+		(*Query_ScanTables_)(nil),
+		(*Query_ReadTable_)(nil),
+	}
+	file_sql_sqlpb_sql_proto_msgTypes[11].OneofWrappers = []interface{}{
+		(*Value_Null)(nil),
+		(*Value_Bool)(nil),
+		(*Value_Int)(nil),
+		(*Value_Float)(nil),
+		(*Value_String_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_sql_sqlpb_sql_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   8,
+			NumEnums:      1,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_sql_sqlpb_sql_proto_goTypes,
 		DependencyIndexes: file_sql_sqlpb_sql_proto_depIdxs,
+		EnumInfos:         file_sql_sqlpb_sql_proto_enumTypes,
 		MessageInfos:      file_sql_sqlpb_sql_proto_msgTypes,
 	}.Build()
 	File_sql_sqlpb_sql_proto = out.File
