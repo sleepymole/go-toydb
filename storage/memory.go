@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/google/btree"
+	"github.com/sleepymole/go-toydb/storage/storagepb"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
 )
@@ -91,13 +92,13 @@ func (m *Memory) ReverseScan(start, end rangeutil.Bound) (itertools.Iterator[Key
 	return scan, nil
 }
 
-func (m *Memory) Status() (*EngineStatus, error) {
+func (m *Memory) Status() (*storagepb.EngineStatus, error) {
 	size := int64(0)
 	m.data.Ascend(func(kv KeyValue) bool {
 		size += int64(len(kv.Key)) + int64(len(kv.Value))
 		return true
 	})
-	return &EngineStatus{
+	return &storagepb.EngineStatus{
 		Name:            "memory",
 		Keys:            int64(m.data.Len()),
 		Size:            size,

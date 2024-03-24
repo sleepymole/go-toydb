@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 
+	"github.com/sleepymole/go-toydb/storage/storagepb"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
 )
@@ -54,25 +55,9 @@ type Engine interface {
 	// with a key that has the given prefix, in descending order.
 	ReverseScanPrefix(prefix []byte) (itertools.Iterator[KeyValue], error)
 	// Status returns the current status of the engine.
-	Status() (*EngineStatus, error)
+	Status() (*storagepb.EngineStatus, error)
 	// Close closes the engine.
 	Close() error
-}
-
-// EngineStatus contains the current status of an engine.
-type EngineStatus struct {
-	// Name is the name of the engine.
-	Name string
-	// Keys is the number of live keys in the engine.
-	Keys int64
-	// Size is the logical size of live key/values pairs.
-	Size int64
-	// TotalDiskSize is the on-disk size of all data, live and garbage.
-	TotalDiskSize int64
-	// LiveDiskSize is the on-disk size of live data.
-	LiveDiskSize int64
-	// GarbageDiskSize is the on-disk size of garbage data.
-	GarbageDiskSize int64
 }
 
 type engineBase struct {

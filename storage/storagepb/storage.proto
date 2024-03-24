@@ -1,0 +1,46 @@
+syntax = "proto3";
+package toydb.mvccpb;
+
+option go_package = "github.com/sleepymole/go-toydb/storage/storagepb";
+
+// EngineStatus contains the current status of the storage engine.
+message EngineStatus {
+  // Name is the name of the engine.
+  string name = 1;
+  // Keys is the number of live keys in the engine.
+  int64 keys = 2;
+  // Size is the logical size of live key/values pairs.
+  int64 size = 3;
+  // TotalDiskSize is the on-disk size of all data, live and garbage.
+  int64 total_disk_size = 4;
+  // LiveDiskSize is the on-disk size of live data.
+  int64 live_disk_size = 5;
+  // GarbageDiskSize is the on-disk size of garbage data.
+  int64 garbage_disk_size = 6;
+}
+
+// MVCCStatus contains the current status of the MVCC engine.
+message MVCCStatus {
+  // Versions is the number of MVCC versions (i.e. read-write transactions).
+  int64 versions = 1;
+  // ActiveTxns is the number of active transactions.
+  int64 active_txns = 2;
+  // Storage is the underlying storage engine status.
+  EngineStatus storage = 3;
+}
+
+// MVCCTxnState is the MVCC transaction state, which determines its write version
+// and isolation. It is separate from the transaction itself to allow it to be
+// passed around independently of the engine.
+message MVCCTxnState {
+  // Version is the version this transaction is running at. Only one read-write
+  // transaction can run at a given version, since this identifies the its write.
+  uint64 version = 1;
+  // ReadOnly is true if this transaction is read-only.
+  bool read_only = 2;
+  // ActiveTxns is the set of concurrent active (uncommitted) transactions, as of
+  // the start of this transaction. Their writes should be invisible to this
+  // transaction even if they're writting at a lower version, since they're not
+  // committed yet.
+  repeated uint64 active_txns = 3;
+}

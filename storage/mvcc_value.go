@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"github.com/emirpasic/gods/v2/sets"
 	"github.com/samber/mo"
 )
 
@@ -18,11 +17,11 @@ func decodeMVCCNextVersionValue(b []byte) (MVCCVersion, error) {
 	panic("implement me")
 }
 
-func encodeMVCCTxnActiveSnapshotValue(active sets.Set[MVCCVersion]) []byte {
+func encodeMVCCTxnActiveSnapshotValue(active []MVCCVersion) []byte {
 	panic("implement me")
 }
 
-func decodeMVCCTxnActiveSnapshotValue(b []byte) (sets.Set[MVCCVersion], error) {
+func decodeMVCCTxnActiveSnapshotValue(b []byte) ([]MVCCVersion, error) {
 	panic("implement me")
 }
 

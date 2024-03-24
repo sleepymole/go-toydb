@@ -7,6 +7,7 @@ import (
 
 	"github.com/sleepymole/go-toydb/raft/raftpb"
 	"github.com/sleepymole/go-toydb/storage"
+	"github.com/sleepymole/go-toydb/storage/storagepb"
 	"github.com/sleepymole/go-toydb/util/itertools"
 	"github.com/sleepymole/go-toydb/util/rangeutil"
 )
@@ -164,7 +165,7 @@ func loadCommitIndex(engine storage.Engine) (Index, Term, error) {
 	return decodeCommitValue(value)
 }
 
-func (l *Log) Status() (*storage.EngineStatus, error) {
+func (l *Log) Status() (*storagepb.EngineStatus, error) {
 	return l.engine.Status()
 }
 
