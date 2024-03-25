@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/sleepymole/go-toydb/sql/sqlpb"
 )
 
 type Type uint8
@@ -38,6 +40,23 @@ type Value struct {
 	typ Type
 	x   int64
 	s   string
+}
+
+func (v *Value) ToPB() *sqlpb.Value {
+	switch v.typ {
+	case TypeNull:
+		return &sqlpb.Value{Union: &sqlpb.Value_Null{}}
+	case TypeBool:
+		return &sqlpb.Value{Union: &sqlpb.Value_Bool{Bool: v.Bool()}}
+	case TypeInt:
+		return &sqlpb.Value{Union: &sqlpb.Value_Int{Int: v.x}}
+	case TypeFloat:
+		return &sqlpb.Value{Union: &sqlpb.Value_Float{Float: v.Float()}}
+	case TypeString:
+		return &sqlpb.Value{Union: &sqlpb.Value_String_{String_: v.s}}
+	default:
+		return &sqlpb.Value{Union: &sqlpb.Value_Null{}}
+	}
 }
 
 func (v *Value) Type() Type {
@@ -93,7 +112,7 @@ func (v *Value) String() string {
 	case TypeString:
 		return v.s
 	default:
-		return v.typ.String()
+		return fmt.Sprintf("Unknown(type=%d)", v.typ)
 	}
 }
 
